@@ -90,7 +90,7 @@ class HillClimbEnv(gym.Env):
         self.terrain_poly.append((x, TERRAIN_HEIGHT))
         
         for _ in range(TERRAIN_LENGTH):
-            y += self.np_random.uniform(-TERRAIN_STEP, TERRAIN_STEP)
+            y += self.np_random.uniform(-TERRAIN_STEP*2, TERRAIN_STEP*2)
             x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
             self.terrain_poly.append((x, y))
 
@@ -113,7 +113,7 @@ class HillClimbEnv(gym.Env):
                 position=(chassis_body.position.x + i*0.8, chassis_body.position.y - 0.4),
                 fixtures=b2FixtureDef(
                     shape=b2CircleShape(radius=0.4),
-                    density=1.0, restitution=0.1, friction=0.9,
+                    density=1.0, restitution=0.2, friction=1,
                     filter=Box2D.b2Filter(groupIndex=-1)
                 )
             )
