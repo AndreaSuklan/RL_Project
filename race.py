@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import pygame
 import Box2D
-from Box2D import (b2World, b2PolygonShape, b2CircleShape, b2_staticBody, b2_dynamicBody, b2FixtureDef, e_wheelJoint, b2RayCastCallback)
+from Box2D import (b2ContactListener, b2World, b2PolygonShape, b2CircleShape, b2FixtureDef, b2RayCastCallback) 
 from stable_baselines3 import PPO
 import numpy as np
 import math
@@ -12,7 +12,7 @@ FPS = 60
 SCALE = 30.0
 VIEWPORT_W = 1200
 VIEWPORT_H = 800
-TERRAIN_STEP = 14 / SCALE
+TERRAIN_STEP = 20 / SCALE
 TERRAIN_LENGTH = 200
 TERRAIN_HEIGHT = VIEWPORT_H / SCALE / 4
 TERRAIN_STARTPAD = 40 / SCALE
@@ -37,6 +37,20 @@ class RayCastCallback(b2RayCastCallback):
         self.fraction = fraction
         return fraction
 
+class MyContactListener(b2ContactListener):
+    def __init__(self, env):
+        super(MyContactListener, self).__init__()
+        self.env = env
+            
+    def BeginContact(self, contact):
+        dataA = contact.fixtureA.body.userData
+        dataB = contact.fixtureB.body.userData
+
+        if (dataA == "human" and dataB == "terrain") or \
+           (dataA == "terrain" and dataB == "human"):
+            self.env.terminated = True
+        
+
 class HillClimbEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
 
@@ -48,6 +62,10 @@ class HillClimbEnv(gym.Env):
         self.b2World = None
         self.car = None
         self.terrain_poly = []
+        self.terrain = None
+        self.terminated = False
+        
+        self.contact_listener = None
 
         self.action_space = spaces.Discrete(3)
         high = np.array([np.inf] * 18, dtype=np.float32)
@@ -58,9 +76,12 @@ class HillClimbEnv(gym.Env):
         for body in self.b2World.bodies: self.b2World.DestroyBody(body)
         self.terrain_poly = []
         self.car = None
+        self.terrain = None
+        self.b2World = None
+        self.contact_listener = None
+
 
     def _create_terrain(self):
-        self.b2World = b2World(gravity=(0, -9.8))
         y = TERRAIN_HEIGHT
         x = 0
         self.terrain_poly = []
@@ -73,8 +94,8 @@ class HillClimbEnv(gym.Env):
             x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
             self.terrain_poly.append((x, y))
 
-        ground = self.b2World.CreateStaticBody()
-        ground.CreateEdgeChain(self.terrain_poly)
+        self.terrain = self.b2World.CreateStaticBody(userData="terrain")
+        self.terrain.CreateEdgeChain(self.terrain_poly)
 
     def _create_car(self):
         chassis_body = self.b2World.CreateDynamicBody(
@@ -84,6 +105,8 @@ class HillClimbEnv(gym.Env):
                 density=1.0, filter=Box2D.b2Filter(groupIndex=-1)
             )
         )
+        chassis_body.userData = "chassis"
+
         wheels = []
         for i in [-1, 1]:
             wheel = self.b2World.CreateDynamicBody(
@@ -94,7 +117,9 @@ class HillClimbEnv(gym.Env):
                     filter=Box2D.b2Filter(groupIndex=-1)
                 )
             )
+            wheel.userData = f"wheel_{i}"
             wheels.append(wheel)
+
         suspensions = []
         for i in range(2):
             joint = self.b2World.CreateWheelJoint(
@@ -105,16 +130,17 @@ class HillClimbEnv(gym.Env):
             suspensions.append(joint)
 
         human = self.b2World.CreateDynamicBody(
-            position=(chassis_body.position.x, chassis_body.position.y + 0.5),
+            position=(chassis_body.position.x, chassis_body.position.y + 1),
             fixtures=b2FixtureDef(
                 shape=b2PolygonShape(vertices=[(-0.3,0.35),(0.3,0.35),(0.3,-0.35),(-0.3,-0.35)]),
                 density=1.0, filter=Box2D.b2Filter(groupIndex=-1)
             )
         )
+        human.userData = "human"
 
         seat = self.b2World.CreateWheelJoint(
-                bodyA=chassis_body, bodyB=human, anchor=wheels[i].position,
-                axis=(0,1), motorSpeed=0, maxMotorTorque=20, enableMotor=True,
+                bodyA=chassis_body, bodyB=human, anchor=human.position,
+                axis=(0,1), motorSpeed=0, maxMotorTorque=0, enableMotor=False,
                 frequencyHz=4.0, dampingRatio=0.7
             )
 
@@ -123,6 +149,13 @@ class HillClimbEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self._destroy()
+        
+        self.terminated = False
+        
+        self.b2World = b2World(gravity=(0, -9.8))
+        self.contact_listener = MyContactListener(self)
+        self.b2World.contactListener = self.contact_listener
+        
         self._create_terrain()
         self._create_car()
         self.prev_shaping = None
@@ -136,30 +169,35 @@ class HillClimbEnv(gym.Env):
         chassis, wheels, suspensions, human, seat  = self.car
         motor_speed = 0
         if action == 1: 
-            motor_speed += 5.0
-            chassis.angle += math.pi/20
+            motor_speed -= 15.0
+            #chassis.ApplyTorque(-10, wake=True)
         elif action == 2: 
-            motor_speed -= 5.0
-            chassis.angle -= math.pi/20
+            motor_speed += 15.0
+            #chassis.ApplyTorque(10, wake=True)
         for suspension in suspensions: 
-            suspension.motorSpeed -= motor_speed
+            suspension.motorSpeed = motor_speed
 
         self.b2World.Step(1.0/FPS, 6*30, 2*30)
         obs = self._get_observation()
 
         reward = 0
         shaping = chassis.position.x
-        if self.prev_shaping is not None: reward = shaping - self.prev_shaping
+        if self.prev_shaping is not None: reward = 10*(shaping - self.prev_shaping)
         self.prev_shaping = shaping
-        reward -= 0.001
 
-        terminated = False
-        if chassis.position.x < 0:
-            terminated = True
-            reward = -100
+        # Kill if going backwards
+        if chassis.position.x < TERRAIN_STARTPAD/2:
+
+            self.terminated = True
+            reward = -200
+
         truncated = self.step_count > 2000
+        
+        if self.terminated:
+            reward = -100.0
+
         if self.render_mode == "human": self.render()
-        return obs, reward, terminated, truncated, {}
+        return obs, reward, self.terminated, truncated, {}
 
     def _get_observation(self):
         chassis, wheels, suspensions, human, seat = self.car
@@ -188,6 +226,8 @@ class HillClimbEnv(gym.Env):
             self.screen = pygame.display.set_mode((VIEWPORT_W, VIEWPORT_H))
             pygame.display.set_caption("Hill Climb RL")
         if self.clock is None: self.clock = pygame.time.Clock()
+
+        if self.b2World is None: return
 
         pygame.event.pump()
 
@@ -225,10 +265,10 @@ if __name__ == '__main__':
     from stable_baselines3 import PPO
 
     env = HillClimbEnv()
-    
+
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./ppo_hcr_tensorboard/")
     print("Starting training...")
-    model.learn(total_timesteps=10000)
+    model.learn(total_timesteps=20000)
     model.save("ppo_hcr_model")
     print("Training finished and model saved!")
 

@@ -30,6 +30,7 @@ if __name__ == '__main__':
 
 
     env = HillClimbEnv(render_mode="human")
+    env.contactlistener = MyContactListener()
 
     try:
         model = PPO.load(MODEL_PATH, env=env)
