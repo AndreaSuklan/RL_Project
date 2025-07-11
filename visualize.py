@@ -24,13 +24,13 @@ class RayCastCallback(b2RayCastCallback):
         return fraction
     
 if __name__ == '__main__':
+
     # assumeing it's in the same directory.
     MODEL_PATH = "ppo_hcr_model.zip"
     NUM_EPISODES = 10
 
 
     env = HillClimbEnv(render_mode="human")
-    env.contactlistener = MyContactListener()
 
     try:
         model = PPO.load(MODEL_PATH, env=env)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
             
             if terminated or truncated:
                 if terminated:
-                    print("Episode finished: Terminated (e.g., car flipped).")
+                    print("Episode finished: Terminated (e.g., touched terrain).")
                 elif truncated:
                     print("Episode finished: Truncated (e.g., time limit reached).")
                 break

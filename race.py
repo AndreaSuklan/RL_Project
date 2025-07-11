@@ -16,6 +16,8 @@ TERRAIN_STEP = 20 / SCALE
 TERRAIN_LENGTH = 200
 TERRAIN_HEIGHT = VIEWPORT_H / SCALE / 4
 TERRAIN_STARTPAD = 40 / SCALE
+ACCELERATION = 15
+TORQUE = 10
 
 #   Colors  
 BACKGROUND_COLOR = (135, 206, 235)
@@ -50,6 +52,17 @@ class MyContactListener(b2ContactListener):
            (dataA == "terrain" and dataB == "human"):
             self.env.terminated = True
         
+        if (dataA == "terrain" and dataB == "wheels_1") or \
+           (dataA == "wheels_1" and dataB == "terrain"):
+            self.airborn = False
+
+        elif (dataA == "terrain" and dataB == "wheels_-1") or \
+           (dataA == "wheels_-1" and dataB == "terrain"):
+            self.airborn = False
+
+        else:
+            self.airborn = True
+        
 
 class HillClimbEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
@@ -64,11 +77,13 @@ class HillClimbEnv(gym.Env):
         self.terrain_poly = []
         self.terrain = None
         self.terminated = False
+        self.airborn = True
+        self.motorspeed = 0.0
         
         self.contact_listener = None
 
         self.action_space = spaces.Discrete(3)
-        high = np.array([np.inf] * 18, dtype=np.float32)
+        high = np.array([np.inf] * 17, dtype=np.float32)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
     def _destroy(self):
@@ -90,7 +105,12 @@ class HillClimbEnv(gym.Env):
         self.terrain_poly.append((x, TERRAIN_HEIGHT))
         
         for _ in range(TERRAIN_LENGTH):
-            y += self.np_random.uniform(-TERRAIN_STEP*2, TERRAIN_STEP*2)
+            step = self.np_random.uniform(-TERRAIN_STEP*2, TERRAIN_STEP*2)
+
+            while ((y + step) <= 0):
+                step = self.np_random.uniform(-TERRAIN_STEP*2, TERRAIN_STEP*2)
+
+            y += step
             x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
             self.terrain_poly.append((x, y))
 
@@ -113,7 +133,7 @@ class HillClimbEnv(gym.Env):
                 position=(chassis_body.position.x + i*0.8, chassis_body.position.y - 0.4),
                 fixtures=b2FixtureDef(
                     shape=b2CircleShape(radius=0.4),
-                    density=1.0, restitution=0.2, friction=1,
+                    density=1.0, restitution=0.2, friction=5,
                     filter=Box2D.b2Filter(groupIndex=-1)
                 )
             )
@@ -151,6 +171,8 @@ class HillClimbEnv(gym.Env):
         self._destroy()
         
         self.terminated = False
+        self.airborn = True
+        self.motorspeed = 0.0
         
         self.b2World = b2World(gravity=(0, -9.8))
         self.contact_listener = MyContactListener(self)
@@ -167,15 +189,20 @@ class HillClimbEnv(gym.Env):
     def step(self, action):
         self.step_count += 1
         chassis, wheels, suspensions, human, seat  = self.car
-        motor_speed = 0
+
         if action == 1: 
-            motor_speed -= 15.0
-            #chassis.ApplyTorque(-10, wake=True)
+            self.motorspeed -= ACCELERATION
+            if self.airborn == True:
+                chassis.ApplyTorque(TORQUE, wake = True)
         elif action == 2: 
-            motor_speed += 15.0
-            #chassis.ApplyTorque(10, wake=True)
+            self.motorspeed += ACCELERATION
+            if self.airborn == True:
+                chassis.ApplyTorque(-TORQUE, wake = True)
+        else:
+            chassis.ApplyTorque(0.0, wake = True)
+
         for suspension in suspensions: 
-            suspension.motorSpeed = motor_speed
+            suspension.motorSpeed = self.motorspeed
 
         self.b2World.Step(1.0/FPS, 6*30, 2*30)
         obs = self._get_observation()
@@ -204,8 +231,8 @@ class HillClimbEnv(gym.Env):
         pos, vel = chassis.position, chassis.linearVelocity
         state = [
             chassis.angle, chassis.angularVelocity, vel.x, vel.y,
-            wheels[0].angularVelocity, wheels[1].angularVelocity,
-            suspensions[0].translation, suspensions[1].translation
+            suspensions[0].translation, suspensions[1].translation,
+            int(self.airborn)
         ]
         lidar_readings = []
         for angle in np.linspace(-math.pi/2, math.pi/2, 10):
@@ -268,7 +295,7 @@ if __name__ == '__main__':
 
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./ppo_hcr_tensorboard/")
     print("Starting training...")
-    model.learn(total_timesteps=20000)
+    model.learn(total_timesteps=200000)
     model.save("ppo_hcr_model")
     print("Training finished and model saved!")
 
