@@ -23,7 +23,7 @@ TORQUE = 10
 BACKGROUND_COLOR = (135, 206, 235)
 TERRAIN_COLOR = (100, 70, 30)
 
- 
+
 class RayCastCallback(b2RayCastCallback):
     def __init__(self, **kwargs):
         b2RayCastCallback.__init__(self)
