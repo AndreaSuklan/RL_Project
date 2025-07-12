@@ -22,6 +22,7 @@ TORQUE = 10
 #   Colors  
 BACKGROUND_COLOR = (135, 206, 235)
 TERRAIN_COLOR = (100, 70, 30)
+COIN_COLOR = (255, 215, 0)
 
 
 class RayCastCallback(b2RayCastCallback):
@@ -47,6 +48,14 @@ class MyContactListener(b2ContactListener):
     def BeginContact(self, contact):
         dataA = contact.fixtureA.body.userData
         dataB = contact.fixtureB.body.userData
+
+        if "coin" in str(dataB) and dataA in ["chassis", "human"]:
+            if contact.fixtureB.body not in self.env.coins_to_remove:
+                self.env.coins_to_remove.append(contact.fixtureB.body)
+        
+        if "coin" in str(dataA) and dataB in ["chassis", "human"]:
+            if contact.fixtureA.body not in self.env.coins_to_remove:
+                self.env.coins_to_remove.append(contact.fixtureA.body)
 
         if (dataA == "human" and dataB == "terrain") or \
            (dataA == "terrain" and dataB == "human"):
@@ -82,8 +91,13 @@ class HillClimbEnv(gym.Env):
         
         self.contact_listener = None
 
+        self.coins = []
+        self.coins_to_remove = []
+
         self.action_space = spaces.Discrete(3)
-        high = np.array([np.inf] * 17, dtype=np.float32)
+        #   MODIFICATION: Increased observation space from 17 to 19
+        #   This is to accommodate the two new values for the nearest coin's relative position (x, y).
+        high = np.array([np.inf] * 19, dtype=np.float32)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
     def _destroy(self):
@@ -94,6 +108,8 @@ class HillClimbEnv(gym.Env):
         self.terrain = None
         self.b2World = None
         self.contact_listener = None
+        self.coins = []
+        self.coins_to_remove = []
 
 
     def _create_terrain(self):
@@ -107,7 +123,7 @@ class HillClimbEnv(gym.Env):
         for _ in range(TERRAIN_LENGTH):
             step = self.np_random.uniform(-TERRAIN_STEP*2, TERRAIN_STEP*2)
 
-            while ((y + step) <= 0):
+            while ((y + step) <= 0 and (y + step) >= VIEWPORT_H):
                 step = self.np_random.uniform(-TERRAIN_STEP*2, TERRAIN_STEP*2)
 
             y += step
@@ -116,6 +132,26 @@ class HillClimbEnv(gym.Env):
 
         self.terrain = self.b2World.CreateStaticBody(userData="terrain")
         self.terrain.CreateEdgeChain(self.terrain_poly)
+
+    def _create_coins(self):
+        self.coins = []
+
+        for i in range(5, len(self.terrain_poly), 5):
+            x1, y1 = self.terrain_poly[i-1]
+            x2, y2 = self.terrain_poly[i]
+            
+            coin_x = (x1 + x2) / 2
+            coin_y = (y1 + y2)/2 + 0.8
+            
+            coin = self.b2World.CreateStaticBody(
+                position=(coin_x, coin_y),
+                fixtures=b2FixtureDef(
+                    isSensor=True, 
+                    shape=b2CircleShape(radius=0.3),
+                )
+            )
+            coin.userData = f"coin_{len(self.coins)}"
+            self.coins.append(coin)
 
     def _create_car(self):
         chassis_body = self.b2World.CreateDynamicBody(
@@ -173,6 +209,7 @@ class HillClimbEnv(gym.Env):
         self.terminated = False
         self.airborn = True
         self.motorspeed = 0.0
+        self.coins_to_remove = []
         
         self.b2World = b2World(gravity=(0, -9.8))
         self.contact_listener = MyContactListener(self)
@@ -180,6 +217,7 @@ class HillClimbEnv(gym.Env):
         
         self._create_terrain()
         self._create_car()
+        self._create_coins()
         self.prev_shaping = None
         self.step_count = 0
         obs = self._get_observation()
@@ -208,13 +246,23 @@ class HillClimbEnv(gym.Env):
         obs = self._get_observation()
 
         reward = 0
+
+        for coin in self.coins_to_remove:
+
+            reward += 50.0
+
+            if coin in self.coins:
+                self.b2World.DestroyBody(coin)
+                self.coins.remove(coin)
+        self.coins_to_remove.clear()
+        
         shaping = chassis.position.x
-        if self.prev_shaping is not None: reward = 10*(shaping - self.prev_shaping)
+        if self.prev_shaping is not None: 
+            reward += 5*(shaping - self.prev_shaping)
         self.prev_shaping = shaping
 
         # Kill if going backwards
         if chassis.position.x < TERRAIN_STARTPAD/2:
-
             self.terminated = True
             reward = -200
 
@@ -245,7 +293,40 @@ class HillClimbEnv(gym.Env):
             lidar_readings.append(callback.fraction)
             
         state.extend(lidar_readings)
+
+        #   MODIFICATION: Find the nearest coin and add its relative position to the state.
+        nearest_coin_dist_sq = float('inf')
+        nearest_coin_pos = None
+
+        if self.coins:
+            # Find the closest coin
+            for coin in self.coins:
+                # Using lengthSquared is more efficient than length as it avoids the square root
+                dist_sq = (pos - coin.position).lengthSquared
+                if dist_sq < nearest_coin_dist_sq:
+                    nearest_coin_dist_sq = dist_sq
+                    nearest_coin_pos = coin.position
+        
+        if nearest_coin_pos:
+            # Vector from car to coin in the world frame
+            vec_to_coin = nearest_coin_pos - pos
+            
+            # Rotate vector into car's local coordinate frame.
+            # This makes the observation independent of the car's global orientation.
+            car_angle = -chassis.angle
+            cos_a = math.cos(car_angle)
+            sin_a = math.sin(car_angle)
+            
+            local_x = vec_to_coin.x * cos_a - vec_to_coin.y * sin_a
+            local_y = vec_to_coin.x * sin_a + vec_to_coin.y * cos_a
+            
+            state.extend([local_x, local_y])
+        else:
+            # If no coins are left, append placeholder values (0,0)
+            state.extend([0.0, 0.0])
+        
         return np.array(state, dtype=np.float32)
+
 
     def render(self):
         if self.screen is None and self.render_mode == "human":
@@ -262,6 +343,11 @@ class HillClimbEnv(gym.Env):
         scroll = self.car[0].position.x * SCALE - VIEWPORT_W / 4
         vertices = [(v[0]*SCALE - scroll, VIEWPORT_H - v[1]*SCALE) for v in self.terrain_poly]
         pygame.draw.lines(self.screen, TERRAIN_COLOR, False, vertices, 3)
+        
+        for coin in self.coins:
+            pos = (coin.position * SCALE)
+            pos = (pos[0] - scroll, VIEWPORT_H - pos[1])
+            pygame.draw.circle(self.screen, COIN_COLOR, pos, 0.3 * SCALE)
 
         chassis, wheels, _, human, _ = self.car
         for body in [chassis] + wheels + [human]:
@@ -300,7 +386,7 @@ if __name__ == '__main__':
     print("Training finished and model saved!")
 
     del model
-    model = PPO.load("ppo_hcr_model")
+    model = PPO.load("ppo_hcr_coins_model")
     
     env = HillClimbEnv(render_mode="human")
     obs, info = env.reset()
