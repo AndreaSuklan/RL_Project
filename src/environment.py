@@ -98,6 +98,7 @@ class HillClimbEnv(gym.Env):
         self.terrain_poly = []
         self.coins = []
         self.coins_to_remove = []
+        self.bodies_to_destroy = []
 
         # --- Environment State ---
         self.terminated = False
@@ -224,6 +225,13 @@ class HillClimbEnv(gym.Env):
         self.step_count += 1
         chassis, wheels, suspensions, human = self.car
 
+        # --- Safely destroy bodies from the previous step ---
+        for body in self.bodies_to_destroy:
+            if body in self.coins:
+                self.coins.remove(body)
+            self.b2World.DestroyBody(body)
+        self.bodies_to_destroy.clear()
+
         # --- Action Handling ---
         if action == 1: # Accelerate Left
             self.motorspeed = max(-ACCELERATION, self.motorspeed - 1)
@@ -241,11 +249,11 @@ class HillClimbEnv(gym.Env):
 
         # --- Reward Calculation ---
         reward = 0
-        for coin in self.coins_to_remove:
+        unique_coins_to_remove = set(self.coins_to_remove)
+        for coin in unique_coins_to_remove:
             reward += 50.0
-            if coin in self.coins:
-                self.b2World.DestroyBody(coin)
-                self.coins.remove(coin)
+            self.bodies_to_destroy.append(coin)
+
         self.coins_to_remove.clear()
         
         shaping = chassis.position.x
