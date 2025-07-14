@@ -57,7 +57,7 @@ The reward function is designed to guide the agent toward the desired behavior:
 
 - **Positive Rewards**:
 
-    - +$X$ points for each coin collected.
+    - $+X$ points for each coin collected.
 
     - A small positive reward proportional to the forward distance traveled since the last step.
 
