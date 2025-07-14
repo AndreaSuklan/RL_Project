@@ -2,47 +2,59 @@
 
 ## Project Overview
 
-This project is a starting point for applying reinforcement learning (RL) algorithms to a 2D physics-based driving game similar to Hill Climb Racing. The goal is to train an agent that can control a vehicle to navigate a randomly generated, hilly terrain.
+This project aims to develop and compare reinforcement learning agents capable of playing a 2D physics-based driving game similar to Hill Climb Racing. The environment is built using **Gymnasium** and **Box2D**, and the project is structured to allow for the modular implementation and training of different RL algorithms.
 
-This implementation uses the following libraries:
-- **Gymnasium**: A standard API for reinforcement learning environments.
-- **Pygame**: For rendering the game environment.
-- **Box2D**: A 2D physics engine to simulate the car and terrain interactions.
-- **Stable-Baselines3**: A set of reliable implementations of RL algorithms.
+The current setup includes placeholders for **PPO** (Proximal Policy Optimization) and **DQN** (Deep Q-Network) agents, which currently use the `stable-baselines3` library but are designed to be replaced with custom implementations.
 
-## Current Status
+***
 
-The project currently consists of two main Python scripts: `race.py` and `visualize.py`.
+## File Structure
 
-### `race.py`
+The project is organized into several key files within the `src` directory:
 
-This script contains the core components of the project:
+* **`main.py`**: The main entry point for the project. It handles command-line arguments to either train a new agent or visualize a pre-trained one.
+* **`environment.py`**: Contains the `HillClimbEnv` class, which defines the game world, physics, rewards, and observation/action spaces.
+* **`ppo.py`**: Defines the agent creation logic for the PPO algorithm.
+* **`dqn.py`**: Defines the agent creation logic for the DQN algorithm.
 
-- **`HillClimbEnv`**: A custom Gymnasium environment that defines the game world, the car, and the rules of interaction.
-  - **State/Observation**: The agent's observation of the environment includes the car's physical properties (angle, velocity) and LIDAR-like sensor readings that detect the distance to the terrain.
-  - **Actions**: The agent can choose from three discrete actions: do nothing, accelerate left, or accelerate right.
-  - **Reward**: The reward function is designed to encourage forward progress. The agent receives a positive reward for moving to the right and a large negative penalty for crashing (e.g., the driver hitting the ground) or moving backward.
-- **Training Loop**: The `if __name__ == '__main__':` block demonstrates how to create the environment, instantiate a Proximal Policy Optimization (PPO) model from Stable-Baselines3, and train it for a set number of timesteps. After training, the model is saved to a file (`ppo_hcr_model.zip`).
-
-### `visualize.py`
-
-This script is used to load a pre-trained model and visualize its performance in the game environment. It loads the `ppo_hcr_model.zip` file, creates the `HillClimbEnv` with rendering enabled, and runs the agent for a specified number of episodes.
+***
 
 ## How to Run
 
-1. **Training the Agent**
-To train the agent, run the race.py script:
+### 1. Training an Agent
 
-```
-python race.py
-```
+To train an agent, run the `main.py` script from the directory outside of `src` with the train action, specifying the algorithm.
 
-This will start the training process. You will see output from Stable-Baselines3 in your terminal, and a TensorBoard log directory (`./ppo_hcr_tensorboard/`) will be created for monitoring training progress. Once training is complete, a file named `ppo_hcr_model.zip` will be saved in the same directory. The script will then automatically load the saved model and run a short visualization.
+- Train with PPO:
+  ```bash
+  python src/main.py train ppo
+  ```
 
-2. **Visualizing a Trained Agent**
-After a model has been trained and saved, you can visualize its performance by running the visualize.py script:
+- Train with DQN:
+  ```bash
+  python src/main.py train dqn
+  ```
 
-```
-python visualize.py
-```
-This will open a Pygame window and show the agent driving the car through the environment for 10 episodes.
+The trained model will be saved as a `.zip` file inside the `models/` directory.
+
+
+### 2. Visualizing an Agent
+Once a model has been trained, you can watch it play the game using the `visualize` action.
+
+- Visualize the PPO agent:
+  ```bash
+  python src/main.py visualize ppo
+  ```
+
+- Visualize the DQN agent:
+  ```bash
+  python src/main.py visualize dqn
+  ```
+
+
+### 3. Check the logs
+The logs saved during the trainning can be checked running the following command.
+
+  ```bash
+  tensorboard --logdir ./logs
+  ```
