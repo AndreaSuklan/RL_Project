@@ -107,7 +107,7 @@ class HillClimbEnv(gym.Env):
         self.step_count = 0
         
         # --- Action & Observation Spaces ---
-        self.action_space = spaces.Discrete(4) # 0:No-op, 1:Accelerate Left, 2:Accelerate Right, 3:Brake
+        self.action_space = spaces.Discrete(3)
         high = np.array([np.inf] * 19, dtype=np.float32)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
@@ -231,8 +231,6 @@ class HillClimbEnv(gym.Env):
         elif action == 2: # Accelerate Right
             self.motorspeed = min(ACCELERATION, self.motorspeed + 1)
             if self.airborn: chassis.ApplyTorque(-TORQUE, wake=True)
-        elif action == 3: # Brake
-            self.motorspeed = 0.0
         
         for suspension in suspensions:
             suspension.motorSpeed = self.motorspeed
