@@ -95,8 +95,6 @@ class HillClimbEnv(gym.Env):
         self.coins_to_remove = []
 
         self.action_space = spaces.Discrete(3)
-        #   MODIFICATION: Increased observation space from 17 to 19
-        #   This is to accommodate the two new values for the nearest coin's relative position (x, y).
         high = np.array([np.inf] * 19, dtype=np.float32)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 

@@ -3,17 +3,16 @@
 import argparse
 import os
 from environment import HillClimbEnv
-
-# Dynamically import the correct agent creation function and model class
 import ppo
 import dqn
-from stable_baselines3 import PPO as PPO_Model, DQN as DQN_Model
+from stable_baselines3 import DQN as DQN_Model
 
 # --- Configuration ---
 MODELS_DIR = "./models"
 LOGS_DIR = "./logs"
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
+
 
 def train(algorithm, timesteps):
     """
@@ -45,6 +44,7 @@ def train(algorithm, timesteps):
     print(f"Model saved to: {model_path}")
     env.close()
 
+
 def visualize(algorithm):
     """
     Visualizes a pre-trained agent.
@@ -61,7 +61,7 @@ def visualize(algorithm):
     
     # --- Select the correct model class to load ---
     if algorithm == 'ppo':
-        model = PPO_Model.load(model_path, env=env)
+        model = ppo.PPO.load(model_path, env=env)
     elif algorithm == 'dqn':
         model = DQN_Model.load(model_path, env=env)
     else:
@@ -73,7 +73,7 @@ def visualize(algorithm):
     obs, info = env.reset()
     try:
         while True:
-            action, _ = model.predict(obs, deterministic=True)
+            action = model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, info = env.step(action)
             if terminated or truncated:
                 obs, info = env.reset()
