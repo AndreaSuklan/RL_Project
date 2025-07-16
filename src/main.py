@@ -2,7 +2,7 @@ import argparse
 import os
 from environment import HillClimbEnv
 from ppo import PPO
-from dqn import DQN, SimpleDQN
+from dqn import DQN
 
 
 # --- Configuration ---
