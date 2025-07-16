@@ -39,7 +39,7 @@ def train(algorithm):
             epsilon=0.1, 
             replay_capacity=10000, 
             batch_size=64)
-        agent.learn(total_episodes=1000, max_steps_per_episode=200)
+        agent.learn(total_episodes=1000, max_steps_per_episode=200, verbose=1)
 
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")

@@ -87,7 +87,7 @@ class DQN:
 
         return loss.item()
 
-    def learn(self, total_episodes=1000, max_steps_per_episode=500):
+    def learn(self, total_episodes=1000, max_steps_per_episode=500, verbose=0):
         self.performance_traj = []
         for episode in tqdm(range(total_episodes), desc="Training Episodes"):
             state, _ = self.env.reset()
@@ -110,7 +110,7 @@ class DQN:
 
             if verbose > 0 and (episode + 1) % 10 == 0:
                 mean_reward = np.mean(self.performance_traj[-10:])
-                print(f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}" if loss is not None else f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}")
+                print(f"\nEpisode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}" if loss is not None else f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}")
 
     def predict(self, observation, deterministic=True):
         state_tensor = torch.tensor(observation, dtype=torch.float32)
