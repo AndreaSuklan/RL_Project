@@ -153,7 +153,8 @@ class MyDQN:
         os.rmdir(tmp_dir)
 
     @classmethod
-    def load(cls, path="my_dqn_model.zip", env=None, policy_class=None, input_size=None):
+    def load(cls, path, env):
+        input_size = env.observation_space.shape[0]
         import tempfile
         with tempfile.TemporaryDirectory() as tmp_dir:
             with zipfile.ZipFile(path, 'r') as zipf:
@@ -162,7 +163,7 @@ class MyDQN:
             with open(os.path.join(tmp_dir, "meta.pkl"), "rb") as f:
                 meta = pickle.load(f)
 
-            policy = policy_class(input_size, meta["action_size"])
+            policy = SimpleDQN(input_size, meta["action_size"])
             model = cls(env=env, policy=policy, input_size=input_size,
                         action_size=meta["action_size"], gamma=meta["gamma"],
                         lr=meta["lr"], epsilon=meta["epsilon"], batch_size=meta["batch_size"])
