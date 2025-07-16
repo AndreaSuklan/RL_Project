@@ -4,7 +4,7 @@
 
 This project aims to develop and compare reinforcement learning agents capable of playing a 2D physics-based driving game similar to Hill Climb Racing. The environment is built using **Gymnasium** and **Box2D**, and the project is structured to allow for the modular implementation and training of different RL algorithms.
 
-The current setup includes placeholders for **PPO** (Proximal Policy Optimization) and **DQN** (Deep Q-Network) agents, which currently use the `stable-baselines3` library but are designed to be replaced with custom implementations.
+The current setup includes custom **PPO** (Proximal Policy Optimization) and **DQN** (Deep Q-Network) agents.
 
 ***
 
@@ -49,12 +49,4 @@ Once a model has been trained, you can watch it play the game using the `visuali
 - Visualize the DQN agent:
   ```bash
   python src/main.py visualize dqn
-  ```
-
-
-### 3. Check the logs
-The logs saved during the trainning can be checked running the following command.
-
-  ```bash
-  tensorboard --logdir ./logs
   ```
