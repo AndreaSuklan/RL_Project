@@ -5,7 +5,7 @@ import os
 from environment import HillClimbEnv
 import ppo
 import dqn
-from stable_baselines3 import DQN as DQN_Model
+
 
 # --- Configuration ---
 MODELS_DIR = "./models"
@@ -34,7 +34,7 @@ def train(algorithm, timesteps):
         return
 
     # Train the agent
-    agent.learn(total_timesteps=timesteps)
+    agent.learn()
 
     # Save the trained model
     model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
@@ -63,7 +63,7 @@ def visualize(algorithm):
     if algorithm == 'ppo':
         model = ppo.PPO.load(model_path, env=env)
     elif algorithm == 'dqn':
-        model = DQN_Model.load(model_path, env=env)
+        model = dqn.MyDQN.load(model_path, env=env)
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
         env.close()
