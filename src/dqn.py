@@ -12,6 +12,9 @@ from tqdm import tqdm
 
 
 class SimpleDQN(nn.Module):
+    """A simple feedforward neural network for DQN policy.
+    It takes the state as input and outputs Q-values for each action.
+    """
     def __init__(self, input_dim, output_dim):
         super(SimpleDQN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 512)
@@ -23,6 +26,7 @@ class SimpleDQN(nn.Module):
 
 
 class ReplayBuffer:
+    """A simple replay buffer to store experiences for DQN training."""
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
 
@@ -46,6 +50,17 @@ class ReplayBuffer:
 
 
 class DQN:
+    """Deep Q-Network (DQN) agent.
+    This agent uses a simple feedforward neural network to approximate Q-values.
+    It implements experience replay and epsilon-greedy action selection.
+    Arguments:
+        env: The environment to interact with.
+        gamma: Discount factor for future rewards.
+        lr: Learning rate for the optimizer.
+        epsilon: Initial exploration rate for epsilon-greedy action selection.
+        replay_capacity: Maximum size of the replay buffer.
+        batch_size: Number of samples to draw from the replay buffer for training.
+    """
     def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, replay_capacity=10000, batch_size=64):
         self.env = env
         self.gamma = gamma
@@ -88,6 +103,12 @@ class DQN:
         return loss.item()
 
     def learn(self, total_episodes=1000, max_steps_per_episode=500, verbose=0):
+        """Train the DQN agent.
+        Args:
+            total_episodes: Total number of episodes to train the agent.
+            max_steps_per_episode: Maximum steps per episode.
+            verbose: Verbosity level (0 for no output, 1 for progress updates).
+        """ 
         self.performance_traj = []
         for episode in tqdm(range(total_episodes), desc="Training Episodes"):
             state, _ = self.env.reset()
@@ -113,6 +134,13 @@ class DQN:
                 print(f"\nEpisode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}" if loss is not None else f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}")
 
     def predict(self, observation, deterministic=True):
+        """Predict the action based on the current observation.
+        Args:
+            observation: The current state of the environment.
+            deterministic: If True, select the action with the highest Q-value.
+        Returns:
+            The predicted action.
+        """
         state_tensor = torch.tensor(observation, dtype=torch.float32)
         with torch.no_grad():
             q_values = self.policy(state_tensor)
@@ -123,6 +151,7 @@ class DQN:
                 return np.random.choice(self.action_size, p=probs)
 
     def save(self, path="dqn_model.zip"):
+        """Save the DQN model to a zip file."""
         tmp_dir = "tmp_dqn_save"
         os.makedirs(tmp_dir, exist_ok=True)
 
@@ -150,6 +179,7 @@ class DQN:
 
     @classmethod
     def load(cls, path, env):
+        """Load a DQN model from a zip file."""
         import tempfile
         with tempfile.TemporaryDirectory() as tmp_dir:
             with zipfile.ZipFile(path, 'r') as zipf:

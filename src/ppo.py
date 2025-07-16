@@ -6,6 +6,13 @@ import zipfile
 import io
 
 class ActorCritic(nn.Module):
+    """    Actor-Critic model for PPO.
+    This model has a shared body for both the actor and critic networks.
+    The actor outputs a probability distribution over actions, while the critic outputs a state value.  
+    Args:
+        state_dim (int): Dimension of the state space.
+        action_dim (int): Dimension of the action space.
+    """
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
 
@@ -34,6 +41,15 @@ class ActorCritic(nn.Module):
     
 
 class RolloutBuffer:
+    """    Rollout buffer for storing experiences during the rollout phase.
+    This buffer collects states, actions, rewards, log probabilities, values, and dones.
+    It also computes advantages and returns using Generalized Advantage Estimation (GAE).
+    Args:
+        buffer_size (int): Maximum number of experiences to store in the buffer.
+        state_dim (int): Dimension of the state space.
+        gamma (float): Discount factor for future rewards.
+        gae_lambda (float): Lambda parameter for GAE.
+    """
     def __init__(self, buffer_size, state_dim, gamma, gae_lambda):
         # Store parameters
         self.buffer_size = buffer_size
@@ -165,6 +181,13 @@ class PPO():
 
 
     def learn(self, timesteps, verbose=0):
+        """        Main training loop for the PPO agent.
+        This method runs the agent in the environment, collects experiences, computes advantages and returns,
+        and optimizes the policy using the PPO algorithm.
+        Args:
+            timesteps: Total number of timesteps to train the agent.
+            verbose: Level of verbosity for logging (0 = no logs, 1 = basic logs).
+        """
         state, _ = self.env.reset()
         current_timesteps = 0
 
