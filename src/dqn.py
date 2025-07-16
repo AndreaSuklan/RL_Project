@@ -10,10 +10,12 @@ import pickle
 import os
 from tqdm import tqdm
 
-from consts import INPUT_SIZE, ACTION_SIZE
 
 class SimpleDQN(nn.Module):
-    def __init__(self, input_dim=INPUT_SIZE, output_dim=ACTION_SIZE):
+    """A simple feedforward neural network for DQN policy.
+    It takes the state as input and outputs Q-values for each action.
+    """
+    def __init__(self, input_dim, output_dim):
         super(SimpleDQN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 512)
         self.fc2 = nn.Linear(512, output_dim)
@@ -24,6 +26,7 @@ class SimpleDQN(nn.Module):
 
 
 class ReplayBuffer:
+    """A simple replay buffer to store experiences for DQN training."""
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
 
@@ -46,18 +49,28 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
-class MyDQN:
-    def __init__(self, env, policy, input_size=INPUT_SIZE, action_size=ACTION_SIZE, gamma=0.99, lr=0.001,
-                 epsilon=0.1, replay_capacity=10000, batch_size=64, verbose=0):
+class DQN:
+    """Deep Q-Network (DQN) agent.
+    This agent uses a simple feedforward neural network to approximate Q-values.
+    It implements experience replay and epsilon-greedy action selection.
+    Arguments:
+        env: The environment to interact with.
+        gamma: Discount factor for future rewards.
+        lr: Learning rate for the optimizer.
+        epsilon: Initial exploration rate for epsilon-greedy action selection.
+        replay_capacity: Maximum size of the replay buffer.
+        batch_size: Number of samples to draw from the replay buffer for training.
+    """
+    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, replay_capacity=10000, batch_size=64):
         self.env = env
-        self.policy = policy
         self.gamma = gamma
         self.lr = lr
         self.epsilon = epsilon
-        self.action_size = action_size
+        self.state_size = env.observation_space.shape[0]
+        self.action_size = env.action_space.n
         self.batch_size = batch_size
-        self.verbose = verbose
 
+        self.policy = SimpleDQN(self.state_size, self.action_size)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
         self.replay_buffer = ReplayBuffer(replay_capacity)
         self.performance_traj = []
@@ -89,12 +102,16 @@ class MyDQN:
 
         return loss.item()
 
-    def learn(self, total_episodes=1000, max_steps_per_episode=500):
+    def learn(self, total_episodes=1000, max_steps_per_episode=500, verbose=0):
+        """Train the DQN agent.
+        Args:
+            total_episodes: Total number of episodes to train the agent.
+            max_steps_per_episode: Maximum steps per episode.
+            verbose: Verbosity level (0 for no output, 1 for progress updates).
+        """ 
         self.performance_traj = []
         for episode in tqdm(range(total_episodes), desc="Training Episodes"):
             state, _ = self.env.reset()
-            if self.verbose > 0:
-                print(type(obs), np.array(obs).shape)
             total_reward = 0
 
             for _ in range(max_steps_per_episode):
@@ -112,11 +129,18 @@ class MyDQN:
 
             self.performance_traj.append(total_reward)
 
-            if self.verbose > 0 and (episode + 1) % 10 == 0:
+            if verbose > 0 and (episode + 1) % 10 == 0:
                 mean_reward = np.mean(self.performance_traj[-10:])
-                print(f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}" if loss is not None else f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}")
+                print(f"\nEpisode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}" if loss is not None else f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}")
 
     def predict(self, observation, deterministic=True):
+        """Predict the action based on the current observation.
+        Args:
+            observation: The current state of the environment.
+            deterministic: If True, select the action with the highest Q-value.
+        Returns:
+            The predicted action.
+        """
         state_tensor = torch.tensor(observation, dtype=torch.float32)
         with torch.no_grad():
             q_values = self.policy(state_tensor)
@@ -126,7 +150,8 @@ class MyDQN:
                 probs = F.softmax(q_values, dim=0).numpy()
                 return np.random.choice(self.action_size, p=probs)
 
-    def save(self, path="my_dqn_model.zip"):
+    def save(self, path="dqn_model.zip"):
+        """Save the DQN model to a zip file."""
         tmp_dir = "tmp_dqn_save"
         os.makedirs(tmp_dir, exist_ok=True)
 
@@ -154,7 +179,7 @@ class MyDQN:
 
     @classmethod
     def load(cls, path, env):
-        input_size = env.observation_space.shape[0]
+        """Load a DQN model from a zip file."""
         import tempfile
         with tempfile.TemporaryDirectory() as tmp_dir:
             with zipfile.ZipFile(path, 'r') as zipf:
@@ -163,47 +188,10 @@ class MyDQN:
             with open(os.path.join(tmp_dir, "meta.pkl"), "rb") as f:
                 meta = pickle.load(f)
 
-            policy = SimpleDQN(input_size, meta["action_size"])
-            model = cls(env=env, policy=policy, input_size=input_size,
-                        action_size=meta["action_size"], gamma=meta["gamma"],
-                        lr=meta["lr"], epsilon=meta["epsilon"], batch_size=meta["batch_size"])
+            model = cls(env=env, gamma=meta["gamma"], lr=meta["lr"], epsilon=meta["epsilon"], batch_size=meta["batch_size"])
             model.performance_traj = meta["performance_traj"]
 
             model.policy.load_state_dict(torch.load(os.path.join(tmp_dir, "policy.pth")))
             model.optimizer.load_state_dict(torch.load(os.path.join(tmp_dir, "optimizer.pth")))
 
         return model
-
-def create_agent(env, log_dir=None):
-    """
-    Creates and returns a DQN agent.
-    This function currently uses the Stable-Baselines3 library,
-    but you can replace it with your own DQN implementation later.
-    
-    Args:
-        env: The Gymnasium environment.
-        log_dir: The directory to save TensorBoard logs.
-        
-    Returns:
-        A DQN model instance.
-    """
-    print("Creating QDN agent...")
-    # agent = DQN(
-    #     "MlpPolicy",
-    #     env,
-    #     verbose=1,
-    #     tensorboard_log=log_dir,
-    #     buffer_size=50000,
-    #     learning_starts=1000,
-    #     batch_size=32,
-    #     gamma=0.99,
-    #     train_freq=4,
-    #     gradient_steps=1,
-    #     target_update_interval=1000,
-    #     exploration_fraction=0.2,
-    #     exploration_final_eps=0.05
-    # )
-    policy = SimpleDQN() 
-    agent = MyDQN(env, policy=policy) 
-
-    return agent

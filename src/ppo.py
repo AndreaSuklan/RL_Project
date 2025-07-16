@@ -6,6 +6,13 @@ import zipfile
 import io
 
 class ActorCritic(nn.Module):
+    """    Actor-Critic model for PPO.
+    This model has a shared body for both the actor and critic networks.
+    The actor outputs a probability distribution over actions, while the critic outputs a state value.  
+    Args:
+        state_dim (int): Dimension of the state space.
+        action_dim (int): Dimension of the action space.
+    """
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
 
@@ -34,6 +41,15 @@ class ActorCritic(nn.Module):
     
 
 class RolloutBuffer:
+    """    Rollout buffer for storing experiences during the rollout phase.
+    This buffer collects states, actions, rewards, log probabilities, values, and dones.
+    It also computes advantages and returns using Generalized Advantage Estimation (GAE).
+    Args:
+        buffer_size (int): Maximum number of experiences to store in the buffer.
+        state_dim (int): Dimension of the state space.
+        gamma (float): Discount factor for future rewards.
+        gae_lambda (float): Lambda parameter for GAE.
+    """
     def __init__(self, buffer_size, state_dim, gamma, gae_lambda):
         # Store parameters
         self.buffer_size = buffer_size
@@ -130,7 +146,7 @@ class PPO():
         n_epochs: Number of epochs to train on each batch of data.
         minibatch_size: Size of the minibatches for optimization.
     """
-    def __init__(self, env, buffer_size=2048, gamma=0.99, gae_lambda=0.95, lr=3e-4, clip_epsilon=0.2, n_epochs=10, minibatch_size=64, verbose=0):
+    def __init__(self, env, buffer_size=2048, gamma=0.99, gae_lambda=0.95, lr=3e-4, clip_epsilon=0.2, n_epochs=10, minibatch_size=64):
         # Store parameters
         self.env = env
         self.buffer_size = buffer_size
@@ -141,7 +157,6 @@ class PPO():
         self.n_epochs = n_epochs
         self.minibatch_size = minibatch_size
         self.clip_epsilon = clip_epsilon
-        self.verbose = verbose
 
         # Initialize the rollout buffer
         self.rollout_buffer = RolloutBuffer(
@@ -165,7 +180,14 @@ class PPO():
 
 
 
-    def learn(self, total_timesteps):
+    def learn(self, timesteps, verbose=0):
+        """        Main training loop for the PPO agent.
+        This method runs the agent in the environment, collects experiences, computes advantages and returns,
+        and optimizes the policy using the PPO algorithm.
+        Args:
+            timesteps: Total number of timesteps to train the agent.
+            verbose: Level of verbosity for logging (0 = no logs, 1 = basic logs).
+        """
         state, _ = self.env.reset()
         current_timesteps = 0
 
@@ -173,7 +195,7 @@ class PPO():
         episode_rewards = []
         current_episode_reward = 0
 
-        while current_timesteps < total_timesteps:
+        while current_timesteps < timesteps:
 
             # ROLLOUT PHASE
             for _ in range(self.buffer_size):
@@ -269,12 +291,12 @@ class PPO():
                     entropy_losses.append(entropy.item())
 
             # LOGGING
-            if self.verbose > 0:
+            if verbose > 0:
                 # Calculate mean reward only if episodes have finished in this rollout
                 mean_reward = np.mean(episode_rewards) if episode_rewards else None
 
                 print("-" * 60)
-                print(f"Timestep: {current_timesteps}/{total_timesteps}")
+                print(f"Timestep: {current_timesteps}/{timesteps}")
                 if mean_reward is not None:
                     print(f"Mean Reward (last {len(episode_rewards)} episodes): {mean_reward:.2f}")
                 print(f"Mean Policy Loss: {np.mean(policy_losses):.4f}")
@@ -372,21 +394,4 @@ class PPO():
         # Return the action as a Python number
         return action.item()
         
-
-
-
-def create_agent(env, log_dir=None):
-    """
-    Creates and returns a PPO agent.
-    
-    Args:
-        env: The Gymnasium environment.
-        log_dir: The directory to save logs (not used in this scratch implementation yet).
-    
-    Returns:
-        An instance of PPO class.
-    """
-    print("Creating PPO agent...")
-    agent = PPO(env, verbose=1)
-    return agent
 
