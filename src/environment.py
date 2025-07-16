@@ -233,7 +233,9 @@ class HillClimbEnv(gym.Env):
         self.bodies_to_destroy.clear()
 
         # --- Action Handling ---
-        if action == 1: # Accelerate Left
+        if action == 0:
+            if self.airborn: chassis.ApplyTorque(0.0, wake=True)
+        elif action == 1: # Accelerate Left
             self.motorspeed = max(-ACCELERATION, self.motorspeed - 1)
             if self.airborn: chassis.ApplyTorque(TORQUE, wake=True)
         elif action == 2: # Accelerate Right
