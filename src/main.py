@@ -1,41 +1,52 @@
-# main.py
-
 import argparse
 import os
 from environment import HillClimbEnv
+from ppo import PPO
+from dqn import DQN
 
-# Dynamically import the correct agent creation function and model class
-import ppo
-import dqn
-from stable_baselines3 import PPO as PPO_Model, DQN as DQN_Model
 
 # --- Configuration ---
 MODELS_DIR = "./models"
-LOGS_DIR = "./logs"
 os.makedirs(MODELS_DIR, exist_ok=True)
-os.makedirs(LOGS_DIR, exist_ok=True)
 
-def train(algorithm, timesteps):
+def train(algorithm):
     """
     Trains a new agent by calling the appropriate creation function.
     """
     print(f"--- Starting training for {algorithm.upper()} ---")
     
     env = HillClimbEnv()
-    log_dir = os.path.join(LOGS_DIR, f"{algorithm}_logs")
 
-    # --- Select and create the agent ---
+    # --- Create and train the agent ---
     if algorithm == 'ppo':
-        agent = ppo.create_agent(env, log_dir)
+        agent = PPO(
+            env,
+            buffer_size=2048, 
+            gamma=0.99, 
+            gae_lambda=0.95, 
+            lr=3e-4, 
+            clip_epsilon=0.2, 
+            n_epochs=10, 
+            minibatch_size=64, 
+        )
+        agent.learn(timesteps=200000, verbose=1)
+        
     elif algorithm == 'dqn':
-        agent = dqn.create_agent(env, log_dir)
+        agent = DQN(
+            env, 
+            gamma=0.99, 
+            lr=0.001, 
+            epsilon=0.1, 
+            replay_capacity=10000, 
+            batch_size=64)
+        agent.learn(total_episodes=1000, max_steps_per_episode=200, verbose=1)
+
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
         env.close()
         return
 
-    # Train the agent
-    agent.learn(total_timesteps=timesteps)
+
 
     # Save the trained model
     model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
@@ -44,6 +55,7 @@ def train(algorithm, timesteps):
     print("--- Training Finished ---")
     print(f"Model saved to: {model_path}")
     env.close()
+
 
 def visualize(algorithm):
     """
@@ -61,9 +73,9 @@ def visualize(algorithm):
     
     # --- Select the correct model class to load ---
     if algorithm == 'ppo':
-        model = PPO_Model.load(model_path, env=env)
+        model = PPO.load(model_path, env=env)
     elif algorithm == 'dqn':
-        model = DQN_Model.load(model_path, env=env)
+        model = DQN.load(model_path, env=env)
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
         env.close()
@@ -73,7 +85,7 @@ def visualize(algorithm):
     obs, info = env.reset()
     try:
         while True:
-            action, _ = model.predict(obs, deterministic=True)
+            action = model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, info = env.step(action)
             if terminated or truncated:
                 obs, info = env.reset()
@@ -87,11 +99,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train or Visualize a Hill Climb Agent.")
     parser.add_argument("action", choices=["train", "visualize"], help="Action to perform.")
     parser.add_argument("algorithm", choices=["ppo", "dqn"], help="Algorithm to use.")
-    parser.add_argument("--timesteps", type=int, default=200_000, help="Total timesteps for training.")
     
     args = parser.parse_args()
 
     if args.action == "train":
-        train(args.algorithm, args.timesteps)
+        train(args.algorithm)
     elif args.action == "visualize":
         visualize(args.algorithm)
