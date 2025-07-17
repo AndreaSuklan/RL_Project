@@ -7,6 +7,8 @@ import Box2D
 from Box2D import (b2ContactListener, b2World, b2PolygonShape, b2CircleShape, b2FixtureDef, b2RayCastCallback)
 import numpy as np
 import math
+from scipy.interpolate import make_interp_spline
+
 
 # --- Constants ---
 FPS = 60
@@ -22,7 +24,8 @@ TORQUE = 10.0
 
 # --- Colors ---
 BACKGROUND_COLOR = (135, 206, 235)
-TERRAIN_COLOR = (100, 70, 30)
+SOIL_COLOR = (100, 70, 30)
+GRASS_COLOR = (20, 150, 30)
 COIN_COLOR = (255, 215, 0)
 
 
@@ -96,6 +99,7 @@ class HillClimbEnv(gym.Env):
         self.car = None
         self.terrain = None
         self.terrain_poly = []
+        self.smooth_terrain_poly = []
         self.coins = []
         self.coins_to_remove = []
         self.bodies_to_destroy = []
@@ -123,6 +127,9 @@ class HillClimbEnv(gym.Env):
         self.coins_to_remove = []
 
     def _create_terrain(self):
+        # Define a minimum height to keep the terrain on screen
+        MIN_TERRAIN_HEIGHT = TERRAIN_HEIGHT / 2
+
         y = TERRAIN_HEIGHT
         x = 0
         self.terrain_poly = []
@@ -131,12 +138,29 @@ class HillClimbEnv(gym.Env):
         self.terrain_poly.append((x, TERRAIN_HEIGHT))
         
         for _ in range(TERRAIN_LENGTH):
-            y += self.np_random.uniform(-TERRAIN_STEP * 2, TERRAIN_STEP * 2)
+            step = self.np_random.uniform(-TERRAIN_STEP * 2, TERRAIN_STEP * 2)
+            
+            # Check and correct the terrain height
+            # If the next step would go too low, force it to go up instead.
+            if y + step < MIN_TERRAIN_HEIGHT:
+                step = abs(step) # Use the positive value of the step
+            
+            y += step
             x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
             self.terrain_poly.append((x, y))
 
+        # (The rest of the function is the same)
         self.terrain = self.b2World.CreateStaticBody(userData="terrain")
         self.terrain.CreateEdgeChain(self.terrain_poly)
+
+        # Re-create the smooth terrain points for rendering
+        x_coords = [p[0] for p in self.terrain_poly]
+        y_coords = [p[1] for p in self.terrain_poly]
+        spline = make_interp_spline(x_coords, y_coords, k=3)
+        num_smooth_points = len(self.terrain_poly) * 10
+        x_smooth = np.linspace(min(x_coords), max(x_coords), num_smooth_points)
+        y_smooth = spline(x_smooth)
+        self.smooth_terrain_poly = list(zip(x_smooth, y_smooth))
 
     def _create_coins(self):
         self.coins = []
@@ -284,7 +308,7 @@ class HillClimbEnv(gym.Env):
             int(self.airborn)
         ]
         
-        # --- LIDAR Sensor Data ---
+        # LIDAR Sensor Data
         lidar_readings = []
         for angle in np.linspace(-math.pi / 2, math.pi / 2, 10):
             p1 = pos
@@ -295,7 +319,7 @@ class HillClimbEnv(gym.Env):
             lidar_readings.append(callback.fraction)
         state.extend(lidar_readings)
 
-        # --- Nearest Coin Data ---
+        # Nearest Coin Data
         nearest_coin_pos = None
         if self.coins:
             min_dist_sq = float('inf')
@@ -326,18 +350,35 @@ class HillClimbEnv(gym.Env):
 
         if self.b2World is None: return
 
-        pygame.event.pump()
         self.screen.fill(BACKGROUND_COLOR)
         
         scroll = self.car[0].position.x * SCALE - VIEWPORT_W / 4
-        vertices = [(v[0] * SCALE - scroll, VIEWPORT_H - v[1] * SCALE) for v in self.terrain_poly]
-        pygame.draw.lines(self.screen, TERRAIN_COLOR, False, vertices, 3)
         
+        # Terrain Rendering
+        if self.smooth_terrain_poly:
+            # 1. Create screen coordinates for the smooth terrain line
+            smooth_vertices = [(v[0] * SCALE - scroll, VIEWPORT_H - v[1] * SCALE) for v in self.smooth_terrain_poly]
+            
+            # 2. Create a polygon shape that extends to the bottom of the screen
+            polygon_points = list(smooth_vertices)
+            # Ensure there are enough points to draw
+            if len(polygon_points) > 1:
+                polygon_points.append((smooth_vertices[-1][0], VIEWPORT_H))
+                polygon_points.append((smooth_vertices[0][0], VIEWPORT_H))
+            
+                # 3. Draw the brown filled polygon for the soil
+                pygame.draw.polygon(self.screen, SOIL_COLOR, polygon_points)
+                
+                # 4. Draw the green line on top for the grass (with a thicker width)
+                pygame.draw.lines(self.screen, GRASS_COLOR, False, smooth_vertices, 5)
+
+        # Coin Rendering
         for coin in self.coins:
             pos = (coin.position * SCALE)
             pos = (pos[0] - scroll, VIEWPORT_H - pos[1])
             pygame.draw.circle(self.screen, COIN_COLOR, pos, 0.3 * SCALE)
 
+        # Car Rendering
         chassis, wheels, _, human = self.car
         for body in [chassis] + wheels + [human]:
             for fixture in body.fixtures:
@@ -354,6 +395,7 @@ class HillClimbEnv(gym.Env):
         if self.render_mode == "human":
             pygame.display.flip()
             self.clock.tick(self.metadata["render_fps"])
+
 
     def close(self):
         if self.screen is not None:
