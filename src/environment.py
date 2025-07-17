@@ -113,6 +113,8 @@ class HillClimbEnv(gym.Env):
         self.motorspeed = 0.0
         self.prev_shaping = None
         self.step_count = 0
+        self.current_score = 0.0
+        self.coins_collected = 0
         
         # --- Action & Observation Spaces ---
         self.action_space = spaces.Discrete(3)
@@ -271,6 +273,8 @@ class HillClimbEnv(gym.Env):
         self.coins_to_remove = []
         self.prev_shaping = None
         self.step_count = 0
+        self.current_score = 0.0
+        self.coins_collected = 0
 
         self.bodies_to_destroy.clear()
         
@@ -303,20 +307,19 @@ class HillClimbEnv(gym.Env):
         self.b2World.Step(1.0 / FPS, 6 * 30, 2 * 30)
         obs = self._get_observation()
 
-        #if self.coins_to_remove:
-            #pdb.set_trace()
         # --- Calculate Rewards and Queue Coin Destruction ---
         reward = 0
         if self.coins_to_remove:
             # Create a set of user data strings of coins to be removed
-            user_data_to_remove = set(self.coins_to_remove)
-            
+            unique_coins_to_remove = set(self.coins_to_remove)
+            self.coins_collected += len(unique_coins_to_remove)
+
             # Create a list to hold the coin bodies we find
             coins_found_for_removal = []
             
             # Iterate through a copy of the master coin list to find the bodies
             for coin in list(self.coins):
-                if coin.userData in user_data_to_remove:
+                if coin.userData in unique_coins_to_remove:
                     coins_found_for_removal.append(coin)
 
             # Process the found bodies
@@ -340,6 +343,8 @@ class HillClimbEnv(gym.Env):
         
         if self.terminated:
             reward = -100.0
+
+        self.current_score += reward
 
         if self.render_mode == "human": self.render()
         return obs, reward, self.terminated, truncated, {}
@@ -435,6 +440,7 @@ class HillClimbEnv(gym.Env):
             pygame.init()
             self.screen = pygame.display.set_mode((VIEWPORT_W, VIEWPORT_H))
             pygame.display.set_caption("Hill Climb RL")
+            self.font = pygame.font.Font(None, 40)
         if self.clock is None: self.clock = pygame.time.Clock()
 
         if self.b2World is None: return
@@ -470,6 +476,16 @@ class HillClimbEnv(gym.Env):
 
         # --- Draw Car and Driver ---
         self._draw_car_and_driver(scroll)
+
+        # --- Render Score and Coin Text ---
+        score_text = f"Score: {int(self.current_score)}"
+        coin_text = f"Coins: {self.coins_collected}"
+        
+        score_surface = self.font.render(score_text, True, (0, 0, 0))
+        coin_surface = self.font.render(coin_text, True, (128,128,0))
+        
+        self.screen.blit(score_surface, (15, 15))
+        self.screen.blit(coin_surface, (15, 55))
 
         if self.render_mode == "human":
             pygame.display.flip()
