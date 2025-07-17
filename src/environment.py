@@ -1,5 +1,3 @@
-# environment.py
-
 import gymnasium as gym
 from gymnasium import spaces
 import pygame
@@ -8,7 +6,6 @@ from Box2D import (b2ContactListener, b2World, b2PolygonShape, b2CircleShape, b2
 import numpy as np
 import math
 from scipy.interpolate import make_interp_spline
-import pdb
 
 # --- Constants ---
 FPS = 60
@@ -27,6 +24,13 @@ BACKGROUND_COLOR = (135, 206, 235)
 SOIL_COLOR = (100, 70, 30)
 GRASS_COLOR = (20, 150, 30)
 COIN_COLOR = (255, 215, 0)
+
+# --- Rewards and Penalties ---
+REWARD_DISTANCE = 2.0
+REWARD_COIN = 50.0
+REWARD_AIR_TIME = 50.0
+PENALTY_COLLISION = -100.0
+PENALTY_TIME = -0.1
 
 
 class RayCastCallback(b2RayCastCallback):
@@ -55,7 +59,7 @@ class MyContactListener(b2ContactListener):
         dataA = contact.fixtureA.body.userData
         dataB = contact.fixtureB.body.userData
 
-        # --- Coin Collection (UPDATED) ---
+        # --- Coin Collection ---
         if "coin" in str(dataB) and dataA in ["chassis", "human", "wheel_-1", "wheel_1"]:
             # Append the user data (a string), NOT the body object
             if dataB not in self.env.coins_to_remove:
@@ -72,18 +76,20 @@ class MyContactListener(b2ContactListener):
             self.env.terminated = True
 
         # --- Air-time Detection ---
-        if (dataA == "terrain" and "wheel" in str(dataB)) or \
-           ("wheel" in str(dataA) and dataB == "terrain"):
-            self.env.airborn = False
+        if dataA == "terrain" and dataB in ["chassis", "wheel_-1", "wheel_1"]:
+            self.env.ground_contacts.add(dataB)
+        elif dataB == "terrain" and dataA in ["chassis", "wheel_-1", "wheel_1"]:
+            self.env.ground_contacts.add(dataA)
 
     def EndContact(self, contact):
         dataA = contact.fixtureA.body.userData
         dataB = contact.fixtureB.body.userData
         
         # --- Air-time Detection ---
-        if (dataA == "terrain" and "wheel" in str(dataB)) or \
-           ("wheel" in str(dataA) and dataB == "terrain"):
-            self.env.airborn = True
+        if dataA == "terrain" and dataB in self.env.ground_contacts:
+            self.env.ground_contacts.remove(dataB)
+        elif dataB == "terrain" and dataA in self.env.ground_contacts:
+            self.env.ground_contacts.remove(dataA)
 
 
 class HillClimbEnv(gym.Env):
@@ -106,6 +112,7 @@ class HillClimbEnv(gym.Env):
         self.coins = []
         self.coins_to_remove = []
         self.bodies_to_destroy = []
+        self.ground_contacts = set()
 
         # --- Environment State ---
         self.terminated = False
@@ -113,8 +120,11 @@ class HillClimbEnv(gym.Env):
         self.motorspeed = 0.0
         self.prev_shaping = None
         self.step_count = 0
+        self.air_time_steps = 0
         self.current_score = 0.0
         self.coins_collected = 0
+        self.max_x_achieved = 0.0
+        self.steps_since_progress = 0
         
         # --- Action & Observation Spaces ---
         self.action_space = spaces.Discrete(3)
@@ -123,7 +133,8 @@ class HillClimbEnv(gym.Env):
 
     def _destroy(self):
         if not self.b2World: return
-        for body in self.b2World.bodies: self.b2World.DestroyBody(body)
+        for body in list(self.b2World.bodies):
+            self.b2World.DestroyBody(body)
         self.terrain_poly = []
         self.car = None
         self.terrain = None
@@ -134,6 +145,7 @@ class HillClimbEnv(gym.Env):
     def _create_terrain(self):
         # Define a minimum height to keep the terrain on screen
         MIN_TERRAIN_HEIGHT = TERRAIN_HEIGHT / 2
+        MAX_TERRAIN_HEIGHT = (VIEWPORT_H / SCALE) * 0.8
 
         y = TERRAIN_HEIGHT
         x = 0
@@ -147,8 +159,10 @@ class HillClimbEnv(gym.Env):
             
             # Check and correct the terrain height
             if y + step < MIN_TERRAIN_HEIGHT:
-                step = abs(step) # Use the positive value of the step
-            
+                step = abs(step)
+            elif y + step > MAX_TERRAIN_HEIGHT:
+                step = -abs(step)
+
             y += step
             x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
             self.terrain_poly.append((x, y))
@@ -275,10 +289,61 @@ class HillClimbEnv(gym.Env):
         self.step_count = 0
         self.current_score = 0.0
         self.coins_collected = 0
+        self.air_time_steps = 0
+        self.max_x_achieved = TERRAIN_STARTPAD / 2
+        self.steps_since_progress = 0
 
         self.bodies_to_destroy.clear()
+        self.ground_contacts.clear()
         
         return self._get_observation(), {}
+
+
+    def _calculate_reward(self):
+        """Calculates the reward for the current step."""
+        reward = 0
+        
+        # Coin Reward
+        if self.coins_to_remove:
+            # Create a set of user data strings of coins to be removed
+            unique_coins_to_remove = set(self.coins_to_remove)
+            self.coins_collected += len(unique_coins_to_remove)
+
+            # Create a list to hold the coin bodies we find
+            coins_found_for_removal = []
+            
+            # Iterate through a copy of the master coin list to find the bodies
+            for coin in list(self.coins):
+                if coin.userData in unique_coins_to_remove:
+                    coins_found_for_removal.append(coin)
+
+            # Process the found bodies
+            for coin in coins_found_for_removal:
+                reward += REWARD_COIN
+                if coin in self.coins:
+                    self.bodies_to_destroy.append(coin)
+                    self.coins.remove(coin)
+
+            self.coins_to_remove.clear()
+        
+        # Progress Reward
+        shaping = self.car[0].position.x
+        if self.prev_shaping is not None:
+            reward += REWARD_DISTANCE * (shaping - self.prev_shaping)
+        self.prev_shaping = shaping
+
+        # Air-time Reward
+        if self.airborn and self.air_time_steps > 0 and self.air_time_steps % FPS == 0:
+            reward += REWARD_AIR_TIME
+
+        # Crashing Penalty
+        if self.terminated:
+            reward = PENALTY_COLLISION
+
+        reward += PENALTY_TIME
+
+        return reward
+    
 
     def step(self, action):
         # --- Safely destroy bodies from the PREVIOUS step ---
@@ -286,6 +351,13 @@ class HillClimbEnv(gym.Env):
             if body.active:
                 self.b2World.DestroyBody(body)
         self.bodies_to_destroy.clear()
+
+        # --- Update the air time counter ---
+        self.airborn = len(self.ground_contacts) == 0
+        if self.airborn:
+            self.air_time_steps += 1
+        else:
+            self.air_time_steps = 0
 
         # --- Handle Agent Action ---
         self.step_count += 1
@@ -308,41 +380,33 @@ class HillClimbEnv(gym.Env):
         obs = self._get_observation()
 
         # --- Calculate Rewards and Queue Coin Destruction ---
-        reward = 0
-        if self.coins_to_remove:
-            # Create a set of user data strings of coins to be removed
-            unique_coins_to_remove = set(self.coins_to_remove)
-            self.coins_collected += len(unique_coins_to_remove)
-
-            # Create a list to hold the coin bodies we find
-            coins_found_for_removal = []
-            
-            # Iterate through a copy of the master coin list to find the bodies
-            for coin in list(self.coins):
-                if coin.userData in unique_coins_to_remove:
-                    coins_found_for_removal.append(coin)
-
-            # Process the found bodies
-            for coin in coins_found_for_removal:
-                reward += 50.0
-                if coin in self.coins:
-                    self.bodies_to_destroy.append(coin)
-                    self.coins.remove(coin)
-
-            self.coins_to_remove.clear()
-        
-        shaping = chassis.position.x
-        if self.prev_shaping is not None:
-            reward += 5 * (shaping - self.prev_shaping)
-        self.prev_shaping = shaping
+        reward = self._calculate_reward()
 
         # --- Handle Termination and Truncation ---
         truncated = self.step_count > 2500
+        #truncated = False
+
+        # Check for being stuck
+        PROGRESS_THRESHOLD = 0.1 # meters
+        STUCK_LIMIT = 240        # steps (4 seconds)
+        LINGER_LIMIT = 300
+        current_x = self.car[0].position.x
+        if current_x > self.max_x_achieved + PROGRESS_THRESHOLD:
+            self.max_x_achieved = current_x
+            self.steps_since_progress = 0
+        else:
+            self.steps_since_progress += 1
+        if self.steps_since_progress > STUCK_LIMIT:
+            self.terminated = True
+        if current_x < TERRAIN_STARTPAD and self.step_count > LINGER_LIMIT:
+            self.terminated = True
+
+        # Other termination conditions
         if chassis.position.x < TERRAIN_STARTPAD / 2 and self.step_count > 100:
             self.terminated = True
         
         if self.terminated:
-            reward = -100.0
+            reward = PENALTY_COLLISION
 
         self.current_score += reward
 
@@ -449,6 +513,16 @@ class HillClimbEnv(gym.Env):
         
         scroll = self.car[0].position.x * SCALE - VIEWPORT_W / 4
         
+        # --- Event Handling ---
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.close()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    self.terminated = True
+                elif event.key == pygame.K_q:
+                    self.close()
+
         # --- Draw Terrain ---
         if self.smooth_terrain_poly:
             smooth_vertices = [(v[0] * SCALE - scroll, VIEWPORT_H - v[1] * SCALE) for v in self.smooth_terrain_poly]
@@ -478,14 +552,15 @@ class HillClimbEnv(gym.Env):
         self._draw_car_and_driver(scroll)
 
         # --- Render Score and Coin Text ---
-        score_text = f"Score: {int(self.current_score)}"
-        coin_text = f"Coins: {self.coins_collected}"
-        
-        score_surface = self.font.render(score_text, True, (0, 0, 0))
-        coin_surface = self.font.render(coin_text, True, (128,128,0))
-        
-        self.screen.blit(score_surface, (15, 15))
-        self.screen.blit(coin_surface, (15, 55))
+        if not self.terminated:
+            score_text = f"Score: {int(self.current_score)}"
+            coin_text = f"Coins: {self.coins_collected}"
+            
+            score_surface = self.font.render(score_text, True, (0, 0, 0))
+            coin_surface = self.font.render(coin_text, True, (128,128,0))
+            
+            self.screen.blit(score_surface, (15, 15))
+            self.screen.blit(coin_surface, (15, 55))
 
         if self.render_mode == "human":
             pygame.display.flip()
