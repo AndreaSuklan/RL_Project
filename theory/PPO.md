@@ -69,3 +69,6 @@ The training loop proceeds as follows:
 2.  **Compute Advantages**: For each step, compute the advantage estimates $\hat{A}_t$ and the value targets using the collected data.
 3.  **Optimize**: For several epochs, update the policy and value networks using the PPO objective function and the collected data.
 4.  **Repeat**: Discard the old data and repeat the process from step 1.
+
+
+![PPO diagram](PPO_diagram.png "PPO diagram")
