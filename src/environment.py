@@ -19,7 +19,7 @@ TERRAIN_STEP = 20 / SCALE
 TERRAIN_LENGTH = 200
 TERRAIN_HEIGHT = VIEWPORT_H / SCALE / 4
 TERRAIN_STARTPAD = 40 / SCALE
-ACCELERATION = 30.0
+ACCELERATION = 25.0
 TORQUE = 10.0
 
 # --- Colors ---
@@ -98,6 +98,7 @@ class HillClimbEnv(gym.Env):
         self.b2World = None
         self.car = None
         self.terrain = None
+        self.wall = None
         self.terrain_poly = []
         self.smooth_terrain_poly = []
         self.coins = []
@@ -141,7 +142,6 @@ class HillClimbEnv(gym.Env):
             step = self.np_random.uniform(-TERRAIN_STEP * 2, TERRAIN_STEP * 2)
             
             # Check and correct the terrain height
-            # If the next step would go too low, force it to go up instead.
             if y + step < MIN_TERRAIN_HEIGHT:
                 step = abs(step) # Use the positive value of the step
             
@@ -149,10 +149,19 @@ class HillClimbEnv(gym.Env):
             x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
             self.terrain_poly.append((x, y))
 
-        # (The rest of the function is the same)
         self.terrain = self.b2World.CreateStaticBody(userData="terrain")
         self.terrain.CreateEdgeChain(self.terrain_poly)
 
+        # Create a solid wall at the start
+        self.wall = self.b2World.CreateStaticBody(userData="wall")
+        wall_vertices = [
+            (0, 0),                                     # Bottom-right
+            (-VIEWPORT_W / SCALE, 0),                   # Bottom-left
+            (-VIEWPORT_W / SCALE, VIEWPORT_H / SCALE),  # Top-left
+            (0, VIEWPORT_H / SCALE)                     # Top-right
+        ]
+        self.wall.CreatePolygonFixture(shape=b2PolygonShape(vertices=wall_vertices))
+                                                           
         # Re-create the smooth terrain points for rendering
         x_coords = [p[0] for p in self.terrain_poly]
         y_coords = [p[1] for p in self.terrain_poly]
@@ -261,43 +270,48 @@ class HillClimbEnv(gym.Env):
         self.coins_to_remove = []
         self.prev_shaping = None
         self.step_count = 0
+
+        self.bodies_to_destroy.clear()
         
         return self._get_observation(), {}
 
     def step(self, action):
-        self.step_count += 1
-        chassis, wheels, suspensions, human = self.car
-
-        # --- Safely destroy bodies from the previous step ---
+        # --- Safely destroy bodies from the PREVIOUS step ---
         for body in self.bodies_to_destroy:
-            if body in self.coins:
-                self.coins.remove(body)
             self.b2World.DestroyBody(body)
         self.bodies_to_destroy.clear()
 
-        # --- Action Handling ---
+        # --- Handle Agent Action ---
+        self.step_count += 1
+        chassis, wheels, suspensions, human = self.car
+
         if action == 0:
             if self.airborn: chassis.ApplyTorque(0.0, wake=True)
-        elif action == 1: # Accelerate Left
+        elif action == 1:
             self.motorspeed = max(-ACCELERATION, self.motorspeed - 1)
             if self.airborn: chassis.ApplyTorque(TORQUE, wake=True)
-        elif action == 2: # Accelerate Right
+        elif action == 2:
             self.motorspeed = min(ACCELERATION, self.motorspeed + 1)
             if self.airborn: chassis.ApplyTorque(-TORQUE, wake=True)
         
         for suspension in suspensions:
             suspension.motorSpeed = self.motorspeed
         
-        # --- Physics and Observation ---
+        # --- Step the Physics World ---
         self.b2World.Step(1.0 / FPS, 6 * 30, 2 * 30)
         obs = self._get_observation()
 
-        # --- Reward Calculation ---
+        # --- Calculate Rewards and Queue Coin Destruction ---
         reward = 0
         unique_coins_to_remove = set(self.coins_to_remove)
         for coin in unique_coins_to_remove:
             reward += 50.0
-            self.bodies_to_destroy.append(coin)
+            # Check if the coin is still in the main list
+            if coin in self.coins:
+                # Add to physics destruction queue for the NEXT step
+                self.bodies_to_destroy.append(coin)
+                # Remove the Python reference IMMEDIATELY so no other function sees it
+                self.coins.remove(coin)
 
         self.coins_to_remove.clear()
         
@@ -306,7 +320,7 @@ class HillClimbEnv(gym.Env):
             reward += 5 * (shaping - self.prev_shaping)
         self.prev_shaping = shaping
 
-        # --- Termination and Truncation ---
+        # --- Handle Termination and Truncation ---
         truncated = self.step_count > 2500
         if chassis.position.x < TERRAIN_STARTPAD / 2 and self.step_count > 100:
             self.terminated = True
@@ -425,6 +439,15 @@ class HillClimbEnv(gym.Env):
                 polygon_points.append((smooth_vertices[0][0], VIEWPORT_H))
                 pygame.draw.polygon(self.screen, SOIL_COLOR, polygon_points)
                 pygame.draw.lines(self.screen, GRASS_COLOR, False, smooth_vertices, 5)
+
+        # --- Draw the Wall ---
+        if self.wall:
+            # The wall is a polygon, so we find its vertices and draw it
+            for fixture in self.wall.fixtures:
+                shape = fixture.shape
+                vertices = [(self.wall.transform * v) * SCALE for v in shape.vertices]
+                vertices_screen = [(v[0] - scroll, VIEWPORT_H - v[1]) for v in vertices]
+                pygame.draw.polygon(self.screen, SOIL_COLOR, vertices_screen)
 
         # --- Draw Coins ---
         for coin in self.coins:
