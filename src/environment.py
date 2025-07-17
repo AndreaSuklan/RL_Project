@@ -8,7 +8,7 @@ from Box2D import (b2ContactListener, b2World, b2PolygonShape, b2CircleShape, b2
 import numpy as np
 import math
 from scipy.interpolate import make_interp_spline
-
+import pdb
 
 # --- Constants ---
 FPS = 60
@@ -55,14 +55,16 @@ class MyContactListener(b2ContactListener):
         dataA = contact.fixtureA.body.userData
         dataB = contact.fixtureB.body.userData
 
-        # --- Coin Collection ---
+        # --- Coin Collection (UPDATED) ---
         if "coin" in str(dataB) and dataA in ["chassis", "human", "wheel_-1", "wheel_1"]:
-            if contact.fixtureB.body not in self.env.coins_to_remove:
-                self.env.coins_to_remove.append(contact.fixtureB.body)
+            # Append the user data (a string), NOT the body object
+            if dataB not in self.env.coins_to_remove:
+                self.env.coins_to_remove.append(dataB)
         
         if "coin" in str(dataA) and dataB in ["chassis", "human", "wheel_-1", "wheel_1"]:
-            if contact.fixtureA.body not in self.env.coins_to_remove:
-                self.env.coins_to_remove.append(contact.fixtureA.body)
+            # Append the user data (a string), NOT the body object
+            if dataA not in self.env.coins_to_remove:
+                self.env.coins_to_remove.append(dataA)
 
         # --- Crash Detection ---
         if (dataA == "human" and dataB == "terrain") or \
@@ -231,7 +233,6 @@ class HillClimbEnv(gym.Env):
             suspensions.append(joint)
 
         # --- Driver ---
-        # The driver is now composed of a body (box) and a head (circle)
         human_body = self.b2World.CreateDynamicBody(
             position=(chassis_body.position.x - 0.2, chassis_body.position.y + 0.3),
             fixtures=[
@@ -278,7 +279,8 @@ class HillClimbEnv(gym.Env):
     def step(self, action):
         # --- Safely destroy bodies from the PREVIOUS step ---
         for body in self.bodies_to_destroy:
-            self.b2World.DestroyBody(body)
+            if body.active:
+                self.b2World.DestroyBody(body)
         self.bodies_to_destroy.clear()
 
         # --- Handle Agent Action ---
@@ -301,19 +303,30 @@ class HillClimbEnv(gym.Env):
         self.b2World.Step(1.0 / FPS, 6 * 30, 2 * 30)
         obs = self._get_observation()
 
+        #if self.coins_to_remove:
+            #pdb.set_trace()
         # --- Calculate Rewards and Queue Coin Destruction ---
         reward = 0
-        unique_coins_to_remove = set(self.coins_to_remove)
-        for coin in unique_coins_to_remove:
-            reward += 50.0
-            # Check if the coin is still in the main list
-            if coin in self.coins:
-                # Add to physics destruction queue for the NEXT step
-                self.bodies_to_destroy.append(coin)
-                # Remove the Python reference IMMEDIATELY so no other function sees it
-                self.coins.remove(coin)
+        if self.coins_to_remove:
+            # Create a set of user data strings of coins to be removed
+            user_data_to_remove = set(self.coins_to_remove)
+            
+            # Create a list to hold the coin bodies we find
+            coins_found_for_removal = []
+            
+            # Iterate through a copy of the master coin list to find the bodies
+            for coin in list(self.coins):
+                if coin.userData in user_data_to_remove:
+                    coins_found_for_removal.append(coin)
 
-        self.coins_to_remove.clear()
+            # Process the found bodies
+            for coin in coins_found_for_removal:
+                reward += 50.0
+                if coin in self.coins:
+                    self.bodies_to_destroy.append(coin)
+                    self.coins.remove(coin)
+
+            self.coins_to_remove.clear()
         
         shaping = chassis.position.x
         if self.prev_shaping is not None:
