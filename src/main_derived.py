@@ -3,7 +3,7 @@ import os
 from environment import HillClimbEnv
 from ppo_derived import PPO
 from dqn_derived import DQN
-
+from networks import SimpleDQN, ActorCritic
 
 # --- Configuration ---
 MODELS_DIR = "./models"
@@ -19,8 +19,15 @@ def train(algorithm):
 
     # --- Create and train the agent ---
     if algorithm == 'ppo':
+
+        model = ActorCritic(
+            state_dim = env.observation_space.shape[0],
+            action_dim = env.action_space.n 
+        )
+
         agent = PPO(
             env,
+            model=model,
             gamma=0.99, 
             buffer_size=2048, 
             gae_lambda=0.95, 
@@ -29,11 +36,13 @@ def train(algorithm):
             n_epochs=10, 
             batch_size=64, 
         )
-        agent.learn(timesteps=200000, verbose=1)
+        agent.learn(total_timesteps=200000, verbose=1)
         
     elif algorithm == 'dqn':
+        model = SimpleDQN(input_dim=env.observation_space.shape[0], output_dim=env.action_space.n)
         agent = DQN(
-            env, 
+            env,
+            model=model,
             gamma=0.99, 
             buffer_size=10000, 
             lr=0.001, 

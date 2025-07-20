@@ -11,40 +11,52 @@ class RlAlgorithm(ABC):
     Abstract base class for reinforcement learning algorithms.
     Handles shared initialization, and provides a unified save/load interface using .zip files.
     """
-    def __init__(self, env, buffer, buffer_size, gamma=0.99, lr=1e-3, batch_size=64):
+    def __init__(self, env, model, buffer_size, gamma=0.99, lr=1e-3, batch_size=64):
         self.env = env
-        self.buffer = buffer
         self.buffer_size = buffer_size
         self.gamma = gamma
         self.lr = lr
+        self.batch_size = batch_size
+        self.state_size = env.observation_space.shape[0],
+        self.action_size = env.action_space.n
 
-    @abstractmethod
+        self.model = model 
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+
+    def _get_model_name(self):
+        return self.model.__class__.__name__
+
     def _get_model_state_dict(self):
-        """Return a dictionary of model state dicts to save."""
-        pass
+        return {f"{self._get_model_name()}": self.model.state_dict()}
 
-    @abstractmethod
     def _set_model_state_dict(self, state_dicts):
-        """Load model state dicts from dictionary."""
-        pass
+        self.model.load_state_dict(state_dicts[f"{self._get_model_name()}"])
 
-    @abstractmethod
-    def _build_from_hyperparameters(cls, env, hyperparameters):
-        """Create a new instance from hyperparameters (used during load)."""
-        pass
+    def _build_from_hyperparameters(cls, env, hyperparams):
+        return cls(env=env, **hyperparams)
 
     def _get_optimizer_state_dict(self):
         """Return optimizer state dicts if needed (override in subclasses)."""
-        return {}
+        return {"optimizer": self.optimizer.state_dict()}
 
     def _set_optimizer_state_dict(self, state_dicts):
         """Load optimizer state dicts (override in subclasses if needed)."""
-        pass
+        self.optimizer.load_state_dict(state_dicts["optimizer"])
 
-    @abstractmethod
     def get_hyperparameters(self):
         """Return a dictionary of hyperparameters for saving."""
-        pass
+        return {
+            "buffer_size": self.buffer_size,
+            "gamma": self.gamma,
+            "lr": self.lr,
+            "batch_size": self.batch_size,
+            "state_size": self.state_size,
+            "action_size": self.action_size,
+            "n_epochs": self.n_epochs,
+            "gae_lambda": self.gae_lambda if hasattr(self.model, 'gae_lambda') else None,
+            "epsilon": self.epsilon if hasattr(self.model, 'epsilon') else None,
+            "clip_epsilon": self.clip_epsilon if hasattr(self.model, 'clip_epsilon') else None,
+        }
 
     def save(self, path):
         """Save the model and hyperparameters to a zip file."""
@@ -114,6 +126,14 @@ class RlAlgorithm(ABC):
 
         print(f"Agent loaded from {path}")
         return agent
+
+    @abstractmethod
+    def select_action(self, state):
+        pass
+
+    @abstractmethod
+    def train_step(self):
+        pass
 
     @abstractmethod
     def predict(self, observation, deterministic=True):

@@ -4,64 +4,30 @@ import numpy as np
 from networks import ActorCritic
 from buffers import RolloutBuffer
 from base import RlAlgorithm
-
+from tqdm import tqdm
 
 
 class PPO(RlAlgorithm):
-    def __init__(self, env, buffer_size=2048, gamma=0.99, gae_lambda=0.95,
+    def __init__(self, env, model, buffer_size=2048, gamma=0.99, gae_lambda=0.95,
                  lr=3e-4, clip_epsilon=0.2, n_epochs=10, batch_size=64):
         self.gae_lambda = gae_lambda
         self.clip_epsilon = clip_epsilon
         self.n_epochs = n_epochs
         self.batch_size = batch_size
 
-        self.actor_critic = ActorCritic(
-            state_dim=env.observation_space.shape[0],
-            action_dim=env.action_space.n
-        )
+        super().__init__(env, model=model, buffer_size=buffer_size, gamma=gamma, lr=lr, batch_size=batch_size)
 
-        buffer = RolloutBuffer(
-            buffer_size=buffer_size,
-            state_dim=env.observation_space.shape[0],
+        self.buffer = RolloutBuffer(
+            buffer_size = buffer_size,
+            state_dim = self.state_size[0], # for some reason it passes it as a tuple at training time
             gamma=gamma,
             gae_lambda=gae_lambda
         )
 
-        super().__init__(env, buffer=buffer, buffer_size=buffer_size, gamma=gamma, lr=lr, batch_size=batch_size)
-
-        self.optimizer = torch.optim.Adam(self.actor_critic.parameters(), lr=lr)
-
-    def _get_model_state_dict(self):
-        return {"actor_critic": self.actor_critic.state_dict()}
-
-    def _set_model_state_dict(self, state_dicts):
-        self.actor_critic.load_state_dict(state_dicts["actor_critic"])
-
-    def _get_optimizer_state_dict(self):
-        return {"optimizer": self.optimizer.state_dict()}
-
-    def _set_optimizer_state_dict(self, state_dicts):
-        self.optimizer.load_state_dict(state_dicts["optimizer"])
-
-    def get_hyperparameters(self):
-        return {
-            "buffer_size": self.buffer_size,
-            "gamma": self.gamma,
-            "gae_lambda": self.gae_lambda,
-            "lr": self.lr,
-            "clip_epsilon": self.clip_epsilon,
-            "n_epochs": self.n_epochs,
-            "batch_size": self.batch_size
-        }
-
-    @classmethod
-    def _build_from_hyperparameters(cls, env, hyperparams):
-        return cls(env=env, **hyperparams)
-
     def predict(self, observation, deterministic=True):
         state_tensor = torch.tensor(observation, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
-            dist, _ = self.actor_critic(state_tensor)
+            dist, _ = self.model(state_tensor)
             if deterministic:
                 return torch.argmax(dist.logits).item()
             return dist.sample().item()
@@ -69,7 +35,7 @@ class PPO(RlAlgorithm):
     def select_action(self, state):
         state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
-            dist, value = self.actor_critic(state_tensor)
+            dist, value = self.model(state_tensor)
             action = dist.sample()
             log_prob = dist.log_prob(action)
         return action.item(), log_prob.item(), value.item()
@@ -88,7 +54,7 @@ class PPO(RlAlgorithm):
                 batch_returns = returns[batch_idx]
                 batch_advantages = advantages[batch_idx]
 
-                dist, values = self.actor_critic(batch_states)
+                dist, values = self.model(batch_states)
                 new_log_probs = dist.log_prob(batch_actions)
                 entropy = dist.entropy().mean()
 
@@ -96,7 +62,7 @@ class PPO(RlAlgorithm):
                 surr1 = ratio * batch_advantages
                 surr2 = torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * batch_advantages
                 policy_loss = -torch.min(surr1, surr2).mean()
-                value_loss = F.mse_loss(values.squeeze(), batch_returns)
+                value_loss = nn.functional.mse_loss(values.squeeze(), batch_returns)
 
                 loss = policy_loss + 0.5 * value_loss - 0.01 * entropy
 
@@ -110,13 +76,15 @@ class PPO(RlAlgorithm):
 
         return policy_losses, value_losses, entropy_losses
 
-    def learn(self, timesteps, verbose=0):
+    def learn(self, total_timesteps, verbose=0):
         state, _ = self.env.reset()
         total_steps = 0
         episode_rewards = []
         current_reward = 0
 
-        while total_steps < timesteps:
+        pbar = tqdm(total=total_timesteps, desc="Training PPO")
+
+        while total_steps < total_timesteps:
             for _ in range(self.buffer_size):
                 action, log_prob, value = self.select_action(state)
                 next_state, reward, done, truncated, _ = self.env.step(action)
@@ -124,6 +92,7 @@ class PPO(RlAlgorithm):
                 state = next_state
                 current_reward += reward
                 total_steps += 1
+                pbar.update(1)
 
                 if done or truncated:
                     episode_rewards.append(current_reward)
@@ -132,7 +101,7 @@ class PPO(RlAlgorithm):
 
             with torch.no_grad():
                 last_state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-                _, last_value = self.actor_critic(last_state_tensor)
+                _, last_value = self.model(last_state_tensor)
 
             self.buffer.compute_returns_and_advantages(last_value.item(), done)
             states, actions, old_log_probs, returns, advantages = self.buffer.sample()
@@ -142,7 +111,7 @@ class PPO(RlAlgorithm):
 
             if verbose:
                 print("-" * 60)
-                print(f"Timestep: {total_steps}/{timesteps}")
+                print(f"Timestep: {total_steps}/{total_timesteps}")
                 if episode_rewards:
                     print(f"Mean Reward (last {len(episode_rewards)} episodes): {np.mean(episode_rewards):.2f}")
                 print(f"Mean Policy Loss: {np.mean(policy_losses):.4f}")
@@ -152,4 +121,6 @@ class PPO(RlAlgorithm):
 
             episode_rewards = []
             self.buffer.clear()
+
+        pbar.close()
 
