@@ -32,12 +32,13 @@ class DQN(RlAlgorithm):
 
     def train_step(self):
         if len(self.buffer) < self.batch_size:
-            return None
+            return None, None
 
         states, actions, rewards, next_states, dones = self.buffer.sample(self.batch_size)
 
         q_values = self.model(states).gather(1, actions.unsqueeze(1)).squeeze()
         with torch.no_grad():
+            #mean_q_value = self.policy_network(states).mean().item()
             next_q_values = self.model(next_states).max(1)[0]
             targets = rewards + self.gamma * next_q_values * (1 - dones)
 
@@ -47,34 +48,62 @@ class DQN(RlAlgorithm):
         loss.backward()
         self.optimizer.step()
 
-        return loss.item()
+        return loss.item(), None#, mean_q_value
 
-    def learn(self, total_episodes=1000, max_steps_per_episode=500, verbose=0):
-        self.performance_traj = []
+    def learn(self, total_timesteps, verbose=0):
+        log_data = [] 
+        
+        state, _ = self.env.reset()
+        current_timesteps = 0
+        episode_reward = 0
+        episode_num = 0
 
-        for episode in tqdm(range(total_episodes), desc="Training Episodes"):
-            state, _ = self.env.reset()
-            total_reward = 0
+        episode_losses = []
+        episode_q_values = []
 
-            for _ in range(max_steps_per_episode):
-                action = self.select_action(state)
-                next_state, reward, terminated, truncated, _ = self.env.step(action)
-                done = terminated or truncated
+        pbar = tqdm(total=total_timesteps, desc="Training DQN")
 
-                self.buffer.add(state, action, reward, next_state, done)
-                state = next_state
-                total_reward += reward
+        while current_timesteps < total_timesteps:
+            action = self.select_action(state)
+            next_state, reward, terminated, truncated, _ = self.env.step(action)
+            done = terminated or truncated
 
-                loss = self.train_step()
-                if done:
-                    break
+            self.buffer.add(state, action, reward, next_state, done)
+            state = next_state
+            episode_reward += reward
+            
+            current_timesteps += 1
+            pbar.update(1)
 
-            self.performance_traj.append(total_reward)
+            loss, _ = self.train_step()
+            
+            if loss is not None:
+                episode_losses.append(loss)
+                #episode_q_values.append(mean_q)
+            
+            if done:
+                mean_loss = np.mean(episode_losses) if episode_losses else None
+                #mean_q = np.mean(episode_q_values) if episode_q_values else None
 
-            if verbose and (episode + 1) % 10 == 0:
-                mean_reward = np.mean(self.performance_traj[-10:])
-                if loss is not None:
-                    print(f"\nEpisode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}")
-                else:
-                    print(f"\nEpisode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}")
+                log_data.append({
+                    "timestep": current_timesteps,
+                    "reward": episode_reward,
+                    "value_loss": mean_loss,
+                    #"mean_q_value": mean_q
+                })
+                episode_num += 1
+                
+                if verbose and episode_num % 10 == 0:
+                    mean_reward = np.mean(self.performance_traj[-10:])
+                    if loss is not None:
+                        print(f"\nEpisode {episode_num}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}")
+                    else:
+                        print(f"\nEpisode {episode_num}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}")
 
+                state, _ = self.env.reset()
+                episode_reward = 0
+                episode_losses = []
+                episode_q_values = []
+
+        pbar.close()
+        return log_data

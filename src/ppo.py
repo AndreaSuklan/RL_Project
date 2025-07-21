@@ -77,20 +77,21 @@ class PPO(RlAlgorithm):
 
     def learn(self, total_timesteps, verbose=0):
         state, _ = self.env.reset()
-        total_steps = 0
+        current_timesteps = 0
         episode_rewards = []
         current_reward = 0
+        log_data = [] 
 
         pbar = tqdm(total=total_timesteps, desc="Training PPO")
 
-        while total_steps < total_timesteps:
+        while current_timesteps < total_timesteps:
             for _ in range(self.buffer_size):
                 action, log_prob, value = self.select_action(state)
                 next_state, reward, done, truncated, _ = self.env.step(action)
                 self.buffer.add(state, action, reward, done, log_prob, value)
                 state = next_state
                 current_reward += reward
-                total_steps += 1
+                current_timesteps += 1
                 pbar.update(1)
 
                 if done or truncated:
@@ -108,18 +109,32 @@ class PPO(RlAlgorithm):
                 states, actions, old_log_probs, returns, advantages
             )
 
-            if verbose:
-                print("-" * 60)
-                print(f"Timestep: {total_steps}/{total_timesteps}")
-                if episode_rewards:
-                    print(f"Mean Reward (last {len(episode_rewards)} episodes): {np.mean(episode_rewards):.2f}")
-                print(f"Mean Policy Loss: {np.mean(policy_losses):.4f}")
-                print(f"Mean Value Loss: {np.mean(value_losses):.4f}")
-                print(f"Mean Entropy: {np.mean(entropy_losses):.4f}")
-                print("-" * 60)
+            if verbose > 0:
+                mean_reward = np.mean(episode_rewards) if episode_rewards else None
+                mean_policy_loss = np.mean(policy_losses)
+                mean_value_loss = np.mean(value_losses)
+                mean_entropy = np.mean(entropy_losses)
+
+                # Append a dictionary of all relevant stats for this rollout
+                log_data.append({
+                    "timestep": current_timesteps,
+                    "mean_reward": mean_reward,
+                    "policy_loss": mean_policy_loss,
+                    "value_loss": mean_value_loss,
+                    "entropy": mean_entropy
+                })
+
+                # Print to console
+                print(f"\nTimestep: {current_timesteps}/{total_timesteps}")
+                if mean_reward is not None:
+                    print(f"Mean Reward (last {len(episode_rewards)} episodes): {mean_reward:.2f}")
+                print(f"Mean Policy Loss: {mean_policy_loss:.4f}")
+                print(f"Mean Value Loss: {mean_value_loss:.4f}")
+                print(f"Mean Entropy: {mean_entropy:.4f}")
 
             episode_rewards = []
             self.buffer.clear()
 
         pbar.close()
+        return log_data
 

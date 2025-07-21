@@ -1,5 +1,6 @@
 import argparse
 import os
+import pandas as pd
 from environment import HillClimbEnv
 from ppo import PPO
 from dqn import DQN
@@ -7,15 +8,22 @@ from networks import SimpleDQN, ActorCritic
 
 # --- Configuration ---
 MODELS_DIR = "./models"
+LOGS_DIR = "./logs"
 os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
 
-def train(algorithm):
+def train(algorithm, seed=None):
     """
     Trains a new agent by calling the appropriate creation function.
     """
-    print(f"--- Starting training for {algorithm.upper()} ---")
+    print(f"--- Starting training for {algorithm.upper()} with seed {seed} ---")
     
+    run_name = f"{algorithm}_{seed}"
+
     env = HillClimbEnv()
+
+    if seed is not None:
+        env.reset(seed=seed)
 
     if algorithm == 'ppo':
         model = ActorCritic(
@@ -33,7 +41,7 @@ def train(algorithm):
             n_epochs=10, 
             batch_size=64, 
         )
-        agent.learn(total_timesteps=200000, verbose=1)
+        log_data = agent.learn(total_timesteps=200000, verbose=1)
         
     elif algorithm == 'dqn':
         model = SimpleDQN(
@@ -48,7 +56,7 @@ def train(algorithm):
             lr=0.001, 
             epsilon=0.1, 
             batch_size=64)
-        agent.learn(total_episodes=100, max_steps_per_episode=2000, verbose=1)
+        log_data = agent.learn(total_timesteps=200000, verbose=1)
 
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
@@ -59,6 +67,12 @@ def train(algorithm):
     print("--- Training Finished ---")
     model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
     agent.save(model_path)
+
+    if log_data:
+        df = pd.DataFrame(log_data)
+        df.to_csv(os.path.join(LOGS_DIR, f"{run_name}.csv"), index=False)
+        print(f"Logs saved to {LOGS_DIR}")
+    
     env.close()
 
 
@@ -103,10 +117,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train or Visualize a Hill Climb Agent.")
     parser.add_argument("action", choices=["train", "visualize"], help="Action to perform.")
     parser.add_argument("algorithm", choices=["ppo", "dqn"], help="Algorithm to use.")
-    
+    parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for the run.")
+
     args = parser.parse_args()
 
     if args.action == "train":
-        train(args.algorithm)
+        train(args.algorithm, seed=args.seed)
     elif args.action == "visualize":
         visualize(args.algorithm)
