@@ -1,5 +1,3 @@
-# buffers.py
-
 import numpy as np
 import torch
 from collections import deque
@@ -25,9 +23,11 @@ class ReplayBuffer(BaseBuffer):
         self.buffer.append((state, action, reward, next_state, done))
 
     def sample(self, batch_size):
-        indices = np.random.choice(len(self.buffer), batch_size, replace=False)
-        batch = [self.buffer[i] for i in indices]
-        states, actions, rewards, next_states, dones = zip(*batch)
+        samples = np.random.choice(len(self.buffer), batch_size, replace=False)
+        states, actions, rewards, next_states, dones = zip(*[self.buffer[i] for i in samples])
+        states = np.array(states)
+        next_states = np.array(next_states)
+
         return (
             torch.tensor(states, dtype=torch.float32),
             torch.tensor(actions, dtype=torch.int64),
