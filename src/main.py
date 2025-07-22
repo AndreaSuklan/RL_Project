@@ -3,6 +3,7 @@ import os
 from environment import HillClimbEnv
 from ppo import PPO
 from dqn import DQN
+from sarsa import SARSA 
 
 
 # --- Configuration ---
@@ -41,6 +42,15 @@ def train(algorithm):
             batch_size=64)
         agent.learn(total_episodes=100, max_steps_per_episode=2000, verbose=1)
 
+    elif algorithm == 'sarsa':
+        agent = SARSA(
+            env, 
+            gamma=0.99, 
+            lr=0.001, 
+            epsilon=0.1
+            )
+        agent.learn(total_episodes=100, max_steps_per_episode=2000, verbose=1)
+        
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
         env.close()
@@ -68,14 +78,14 @@ def visualize(algorithm):
         return
 
     print(f"--- Loading model: {model_path} ---")
-
     env = HillClimbEnv(render_mode="human")
-    
-    # --- Select the correct model class to load ---
+
     if algorithm == 'ppo':
         model = PPO.load(model_path, env=env)
     elif algorithm == 'dqn':
         model = DQN.load(model_path, env=env)
+    elif algorithm == 'sarsa':
+        model = SARSA.load(model_path, env=env)
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
         env.close()
@@ -98,7 +108,7 @@ def visualize(algorithm):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train or Visualize a Hill Climb Agent.")
     parser.add_argument("action", choices=["train", "visualize"], help="Action to perform.")
-    parser.add_argument("algorithm", choices=["ppo", "dqn"], help="Algorithm to use.")
+    parser.add_argument("algorithm", choices=["ppo", "dqn", "sarsa"], help="Algorithm to use.")
     
     args = parser.parse_args()
 
