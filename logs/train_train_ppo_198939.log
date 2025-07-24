@@ -1,0 +1,4 @@
+/orfeo/cephfs/home/dssc/gbillo/rlprojenv/lib64/python3.13/site-packages/pygame/pkgdata.py:25: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import resource_stream, resource_exists
+--- Starting training for PPO with seed 0 ---
+Training PPO:   0%|          | 0/200000 [00:00<?, ?it/s]Training PPO:   0%|          | 84/200000 [00:00<03:58, 839.33it/s]Training PPO:   0%|          | 268/200000 [00:00<02:19, 1426.89it/s]Training PPO:   0%|          | 456/200000 [00:00<02:02, 1632.08it/s]Training PPO:   0%|          | 637/200000 [00:00<01:57, 1700.85it/s]

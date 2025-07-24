@@ -41,7 +41,7 @@ def train(algorithm, seed=None):
             n_epochs=10, 
             batch_size=64, 
         )
-        log_data = agent.learn(total_timesteps=200000, verbose=1)
+        log_data = agent.learn(total_timesteps=200000, verbose=verbose)
         
     elif algorithm == 'dqn':
         model = SimpleDQN(
@@ -56,7 +56,7 @@ def train(algorithm, seed=None):
             lr=0.001, 
             epsilon=0.1, 
             batch_size=64)
-        log_data = agent.learn(total_timesteps=200000, verbose=1)
+        log_data = agent.learn(total_timesteps=200000, verbose=verbose)
 
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
@@ -118,10 +118,11 @@ if __name__ == '__main__':
     parser.add_argument("action", choices=["train", "visualize"], help="Action to perform.")
     parser.add_argument("algorithm", choices=["ppo", "dqn"], help="Algorithm to use.")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for the run.")
+    parser.add_argument("-v", "--verbose", type=int, default=0, help="Verbosity level: 0=none, 1=summary, 2=debug")
 
     args = parser.parse_args()
 
     if args.action == "train":
-        train(args.algorithm, seed=args.seed)
+        train(args.algorithm, seed=args.seed, verbose=args.verbose)
     elif args.action == "visualize":
-        visualize(args.algorithm)
+        visualize(args.algorithm, verbose=args.verbose)
