@@ -10,11 +10,11 @@ from sarsa import SARSA
 MODELS_DIR = "./models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-def train(algorithm):
+def train(algorithm, model = "nn", degree=3):
     """
     Trains a new agent by calling the appropriate creation function.
     """
-    print(f"--- Starting training for {algorithm.upper()} ---")
+    print(f"--- Starting training for {algorithm.upper()} with {model} model ---")
     
     env = HillClimbEnv()
 
@@ -59,7 +59,7 @@ def train(algorithm):
 
 
     # Save the trained model
-    model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
+    model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
     agent.save(model_path)
     
     print("--- Training Finished ---")
@@ -67,12 +67,16 @@ def train(algorithm):
     env.close()
 
 
-def visualize(algorithm):
+def visualize(algorithm, model = "nn", degree=3):
     """
     Visualizes a pre-trained agent.
     """
-    model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
-    
+    try:
+        model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
+    except:
+        print(f"{model.upper()} not  found, visualizing {algorithm} with nn architecture")
+        model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
+
     if not os.path.exists(model_path):
         print(f"Error: Model not found at {model_path}. Please train it first.")
         return
@@ -109,10 +113,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train or Visualize a Hill Climb Agent.")
     parser.add_argument("action", choices=["train", "visualize"], help="Action to perform.")
     parser.add_argument("algorithm", choices=["ppo", "dqn", "sarsa"], help="Algorithm to use.")
-    
+    parser.add_argument("model", choices=["linear", "nn", "poly"], default="nn", help="Model type for SARSA (default: nn).")
+    parser.add_argument("degree", type=int, default=3, help="Degree for polynomial model (default: 3).")
+
     args = parser.parse_args()
 
     if args.action == "train":
-        train(args.algorithm)
+        train(args.algorithm, args.model, args.degree)
     elif args.action == "visualize":
-        visualize(args.algorithm)
+        visualize(args.algorithm, args.model, args.degree)
