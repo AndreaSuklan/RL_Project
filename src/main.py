@@ -5,8 +5,7 @@ from ppo import PPO
 from dqn import DQN
 from sarsa import SARSA 
 
-
-# --- Configuration ---
+# --- Directory Setup ---
 MODELS_DIR = "./models"
 os.makedirs(MODELS_DIR, exist_ok=True)
 
@@ -20,6 +19,9 @@ def train(algorithm, model = "nn", degree=3):
 
     # --- Create and train the agent ---
     if algorithm == 'ppo':
+        if model != "nn":
+            print(f"Warning: PPO does not support {model} model, using 'nn' instead.")
+            model = "nn"
         agent = PPO(
             env,
             buffer_size=2048, 
@@ -77,7 +79,7 @@ def visualize(algorithm, model = "nn", degree=3):
     
     model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_{degree}_hill_climb.zip")
         
-    if not os.path.exists(model_path):
+    if not os.path.exists(model_path) and model == "poly":
         model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
         print(f"Poly with degree {degree} not found, trying visulizing degree = 3")
 
