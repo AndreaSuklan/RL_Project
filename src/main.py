@@ -32,7 +32,7 @@ def train(algorithm, model = "nn", degree=3):
             n_epochs=10, 
             minibatch_size=64, 
         )
-        agent.learn(timesteps=200000, verbose=1)
+        agent.learn(timesteps=300000, verbose=1)
         
     elif algorithm == 'dqn':
         agent = DQN(
@@ -79,13 +79,14 @@ def visualize(algorithm, model = "nn", degree=3):
     
     model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_{degree}_hill_climb.zip")
         
-    if not os.path.exists(model_path) and model == "poly":
+    if not os.path.exists(model_path):
+        model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_3_hill_climb.zip")
+    
+    if not os.path.exists(model_path):
         model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
-        print(f"Poly with degree {degree} not found, trying visulizing degree = 3")
 
     if not os.path.exists(model_path):
-        print(f"{model.upper()} model not found, visualizing {algorithm} with nn architecture")
-        model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
+                model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
 
     if not os.path.exists(model_path):
         print(f"Error: Model not found at {model_path}. Please train it first.")
