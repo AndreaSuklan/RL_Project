@@ -10,6 +10,17 @@ import pickle
 import os
 from tqdm import tqdm
 
+def polynomial_features(x, degree=2):
+    """
+    Compute polynomial features up to the given degree.
+    x: Tensor of shape [batch_size, input_dim]
+    Returns: Tensor of shape [batch_size, num_poly_features]
+    """
+    # Start with degree 1 features
+    features = [x]
+    
+    for d in range(2, degree + 1):
+        features.append(x ** d)
 
 class SimpleDQN(nn.Module):
     """A simple feedforward neural network for DQN policy.
@@ -23,7 +34,27 @@ class SimpleDQN(nn.Module):
     def forward(self, x):
         x = F.relu(self.fc1(x))
         return self.fc2(x)
+    
+class LinearDQN(nn.Module):
+    """Linear function approximator for DQN."""
+    def __init__(self, input_dim, output_dim):
+        super(LinearDQN, self).__init__()
+        self.linear = nn.Linear(input_dim, output_dim)
 
+    def forward(self, x):
+        return self.linear(x)
+
+class PolynomialDQN(nn.Module):
+    """Polynomial function approximator for DQN."""
+    def __init__(self, input_dim, output_dim, degree=2):
+        super(PolynomialDQN, self).__init__()
+        self.degree = degree
+        poly_dim = input_dim * degree  # e.g., x, x^2, ..., x^degree
+        self.linear = nn.Linear(poly_dim, output_dim)
+
+    def forward(self, x):
+        poly_x = polynomial_features(x, self.degree)
+        return self.linear(poly_x)
 
 class ReplayBuffer:
     """A simple replay buffer to store experiences for DQN training."""
@@ -61,7 +92,7 @@ class DQN:
         replay_capacity: Maximum size of the replay buffer.
         batch_size: Number of samples to draw from the replay buffer for training.
     """
-    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, replay_capacity=10000, batch_size=64):
+    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, replay_capacity=10000, batch_size=64, model="nn", degree=3):
         self.env = env
         self.gamma = gamma
         self.lr = lr
@@ -69,6 +100,18 @@ class DQN:
         self.state_size = env.observation_space.shape[0]
         self.action_size = env.action_space.n
         self.batch_size = batch_size
+        self.model = model
+        self.degree = degree
+
+        #Policy selection
+        if model == "linear":
+            self.policy = LinearDQN(self.state_size, self.action_size)
+        elif model == "nn":
+            self.policy = SimpleDQN(self.state_size, self.action_size)
+        elif model == "poly":
+            self.policy = PolynomialDQN(self.state_size, self.action_size, degree=self.degree)
+        else:
+            raise ValueError(f"Unrecognized model {self.model}")
 
         self.policy = SimpleDQN(self.state_size, self.action_size)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)

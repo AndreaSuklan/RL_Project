@@ -57,9 +57,6 @@ class PolynomialSARSA(nn.Module):
     def forward(self, x):
         poly_x = polynomial_features(x, self.degree)
         return self.linear(poly_x)
-    
-
-
 
 class ReplayBuffer:
     """A simple replay buffer to store experiences for training."""

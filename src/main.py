@@ -59,7 +59,10 @@ def train(algorithm, model = "nn", degree=3):
 
 
     # Save the trained model
-    model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
+    if model == "poly":
+        model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_{degree}_hill_climb.zip")
+    else:
+        model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
     agent.save(model_path)
     
     print("--- Training Finished ---")
@@ -71,10 +74,15 @@ def visualize(algorithm, model = "nn", degree=3):
     """
     Visualizes a pre-trained agent.
     """
-    try:
+    
+    model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_{degree}_hill_climb.zip")
+        
+    if not os.path.exists(model_path):
         model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
-    except:
-        print(f"{model.upper()} not  found, visualizing {algorithm} with nn architecture")
+        print(f"Poly with degree {degree} not found, trying visulizing degree = 3")
+
+    if not os.path.exists(model_path):
+        print(f"{model.upper()} model not found, visualizing {algorithm} with nn architecture")
         model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
 
     if not os.path.exists(model_path):
@@ -113,8 +121,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train or Visualize a Hill Climb Agent.")
     parser.add_argument("action", choices=["train", "visualize"], help="Action to perform.")
     parser.add_argument("algorithm", choices=["ppo", "dqn", "sarsa"], help="Algorithm to use.")
-    parser.add_argument("model", choices=["linear", "nn", "poly"], default="nn", help="Model type for SARSA (default: nn).")
-    parser.add_argument("degree", type=int, default=3, help="Degree for polynomial model (default: 3).")
+    parser.add_argument("--model", choices=["linear", "nn", "poly"], default="nn", help="Model type for SARSA (default: nn).")
+    parser.add_argument("--degree", type=int, default=3, help="Degree for polynomial model (default: 3).")
 
     args = parser.parse_args()
 
