@@ -80,7 +80,7 @@ class SARSA:
 
         return loss.item()
 
-    def learn(self, total_episodes=1000, max_steps_per_episode=500, verbose=0):
+    def learn(self, total_timesteps = 200000, max_steps_per_episode=2000, verbose=0):
         """Train the SARSA agent.
         Args:
             total_episodes: Total number of episodes to train the agent.
@@ -90,8 +90,9 @@ class SARSA:
         log_data = []
         current_timesteps = 0
         self.performance_traj = []
+        episode = 0
 
-        for episode in tqdm(range(total_episodes), desc="Training Episodes"):
+        while current_timesteps < total_timesteps:
             state, _ = self.env.reset()
             episode_reward = 0
             episode_losses = []
@@ -121,12 +122,13 @@ class SARSA:
                 "timestep": current_timesteps,
                 "reward": episode_reward,
                 "value_loss": mean_loss
-            })
+                })
+            episode += 1
 
-            if verbose > 0 and (episode + 1) % 10 == 0:
+            if verbose > 0 and episode % 10 == 0:
                 mean_reward = np.mean(self.performance_traj[-10:])
                 print_loss = mean_loss if mean_loss is not None else float('nan')
-                print(f"\nEpisode {episode+1}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}, Mean Loss: {print_loss:.4f}")
+                print(f"\nEpisode {episode}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}, Mean Loss: {print_loss:.4f}")
 
         return log_data
 
