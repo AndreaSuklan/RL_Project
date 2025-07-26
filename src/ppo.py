@@ -13,14 +13,10 @@ class PPO(RlAlgorithm):
         self.clip_epsilon = clip_epsilon
         self.n_epochs = n_epochs
         self.batch_size = batch_size
-
-        if model == "nn":
-            self.model = ActorCritic(
-            state_dim=env.observation_space.shape[0],
-            action_dim=env.action_space.n
-        )
+        if isinstance(model, str):
+            self.model = self.__class__.create_model(env, model)
         else:
-            raise ValueError(f"Unrecognized model for PPO: {self.model}")
+            self.model = model
 
         super().__init__(env, model=self.model, buffer_size=buffer_size, gamma=gamma, lr=lr, batch_size=batch_size)
 
@@ -30,6 +26,17 @@ class PPO(RlAlgorithm):
             gamma=gamma,
             gae_lambda=gae_lambda
         )
+
+    @staticmethod
+    def create_model(env, model):
+        if model == "nn":
+            model = ActorCritic(
+            state_dim=env.observation_space.shape[0],
+            action_dim=env.action_space.n
+        )
+            return model
+        else:
+            raise ValueError(f"Unrecognized model for PPO: {model}")
 
     def predict(self, observation, deterministic=True):
         state_tensor = torch.tensor(observation, dtype=torch.float32).unsqueeze(0)

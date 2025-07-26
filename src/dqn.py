@@ -2,34 +2,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from approximations import Linear, Polynomial
 from base import RlAlgorithm
 from buffers import ReplayBuffer
 from tqdm import tqdm
 from networks import MLP_Small
 
-## shouldn't be needed
-# class ReplayBuffer:
-#     """A simple replay buffer to store experiences for DQN training."""
-#     def __init__(self, capacity):
-#         self.buffer = deque(maxlen=capacity)
-
-#     def add(self, state, action, reward, next_state, done):
-#         self.buffer.append((state, action, reward, next_state, done))
-
-#     def sample(self, batch_size):
-#         samples = random.sample(self.buffer, batch_size)
-#         states, actions, rewards, next_states, dones = zip(*samples)
-
-#         return (
-#             torch.from_numpy(np.array(states)).float(),
-#             torch.tensor(actions, dtype=torch.int64),
-#             torch.tensor(rewards, dtype=torch.float32),
-#             torch.from_numpy(np.array(next_states)).float(),
-#             torch.tensor(dones, dtype=torch.float32)
-#         )
-
-#     def __len__(self):
-#         return len(self.buffer)
 
 
 class DQN(RlAlgorithm):
@@ -53,22 +31,29 @@ class DQN(RlAlgorithm):
         self.model = model
         self.degree = degree
 
-         #Policy selection
-        if model == "linear":
-            self.model= Linear(env.observation_space.shape[0], env.action_space.n)
-        elif model == "nn":
-            self.model = MLP_Small(env.observation_space.shape[0], env.action_space.n)
-        elif model == "poly":
-            self.model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree=self.degree)
+        if isinstance(model, str):
+            self.model = self.__class__.create_model(env, model, degree)
         else:
-            raise ValueError(f"Unrecognized model {self.model}")
-       
+            self.model = model
+
         super().__init__(env, model=self.model, buffer_size=buffer_size, gamma=gamma, lr=lr, batch_size=batch_size, verbose=0)
 
 
         self.buffer = ReplayBuffer(capacity=buffer_size)
         self.performance_traj = []
 
+    @staticmethod
+    def create_model(env, model, degree):
+        if model == "linear":
+            model= Linear(env.observation_space.shape[0], env.action_space.n)
+        elif model == "nn":
+            model = MLP_Small(env.observation_space.shape[0], env.action_space.n)
+        elif model == "poly":
+            model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree=degree)
+        else:
+            raise ValueError(f"Unrecognized model {model}")
+        return model
+        
     def predict(self, observation, deterministic=True):
         state_tensor = torch.tensor(observation, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():

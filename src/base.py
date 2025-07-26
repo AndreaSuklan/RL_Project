@@ -81,7 +81,7 @@ class RlAlgorithm(ABC):
         print(f"Agent saved to {path}")
 
     @classmethod
-    def load(cls, path, env, model_class=None):
+    def load(cls, path, env, model):
         if not path.endswith(".zip"):
             path += ".zip"
 
@@ -92,12 +92,8 @@ class RlAlgorithm(ABC):
             with open(os.path.join(tmp_dir, "hyperparameters.pkl"), "rb") as f:
                 hyperparameters = pickle.load(f)
 
-            if model_class is None:
+            if model is None:
                 raise ValueError("A 'model_class' must be provided to load the agent.")
-            
-            state_dim = env.observation_space.shape[0]
-            action_dim = env.action_space.n
-            model = model_class(state_dim, action_dim)
             
             constructor_args = inspect.signature(cls.__init__).parameters.keys()
             filtered_hyperparams = {

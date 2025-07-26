@@ -99,18 +99,26 @@ class SARSA:
         self.model = model
         self.degree = degree
 
-        #Policy selection
-        if model == "linear":
-            self.policy = Linear(self.state_size, self.action_size)
-        elif model == "nn":
-            self.policy = SimpleNN(self.state_size, self.action_size)
-        elif model == "poly":
-            self.policy = Polynomial(self.state_size, self.action_size, degree=self.degree)
+        if isinstance(model, str):
+            self.model = self.__class__.create_model(env, model, degree)
         else:
-            raise ValueError(f"Unrecognized model {self.model}")
+            self.model = model
+        
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
         self.performance_traj = []
 
+    @staticmethod
+    def create_model(env, model, degree):
+        if model == "linear":
+            model= Linear(env.observation_space.shape[0], env.action_space.n)
+        elif model == "nn":
+            model = MLP_Small(env.observation_space.shape[0], env.action_space.n)
+        elif model == "poly":
+            model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree=degree)
+        else:
+            raise ValueError(f"Unrecognized model {model}")
+        return model
+    
     def select_action(self, state):
         if np.random.rand() < self.epsilon:
             return np.random.randint(self.action_size)
