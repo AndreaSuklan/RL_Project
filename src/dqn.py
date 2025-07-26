@@ -157,7 +157,8 @@ class DQN(RlAlgorithm):
 
                 if self.verbose >= 1 and episode_num % 10 == 0:
                     mean_reward = np.mean(self.performance_traj[-10:])
-                    print(f"\n[INFO] Episode {episode_num}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f if loss else None}")
+                    loss_display = f"{loss:.4f}" if loss is not None else "None"
+                    print(f"\n[INFO] Episode {episode_num}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss_display}")
 
                 state, _ = self.env.reset()
                 episode_reward = 0

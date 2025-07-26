@@ -4,7 +4,7 @@ import numpy as np
 from buffers import RolloutBuffer
 from base import RlAlgorithm
 from tqdm import tqdm
-
+from networks import ActorCritic
 
 class PPO(RlAlgorithm):
     def __init__(self, env, model, buffer_size=2048, gamma=0.99, gae_lambda=0.95,
@@ -14,7 +14,15 @@ class PPO(RlAlgorithm):
         self.n_epochs = n_epochs
         self.batch_size = batch_size
 
-        super().__init__(env, model=model, buffer_size=buffer_size, gamma=gamma, lr=lr, batch_size=batch_size)
+        if model == "nn":
+            self.model = ActorCritic(
+            state_dim=env.observation_space.shape[0],
+            action_dim=env.action_space.n
+        )
+        else:
+            raise ValueError(f"Unrecognized model for PPO: {self.model}")
+
+        super().__init__(env, model=self.model, buffer_size=buffer_size, gamma=gamma, lr=lr, batch_size=batch_size)
 
         self.buffer = RolloutBuffer(
             buffer_size = buffer_size,

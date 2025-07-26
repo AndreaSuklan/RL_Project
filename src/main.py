@@ -28,15 +28,9 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
         env.reset(seed=seed)
 
     if algorithm == 'ppo':
-# <<<<<<< HEAD
-#         if model != "nn":
-#             print(f"Warning: PPO does not support {model} model, using 'nn' instead.")
-#             model = "nn"
-# =======
-        model = ActorCritic(
-            state_dim=env.observation_space.shape[0],
-            action_dim=env.action_space.n
-        )
+        if model != "nn":
+            print(f"Warning: PPO does not support {model} model, using 'nn' instead.")
+            model = "nn"
         agent = PPO(
             env,
             model=model,
