@@ -152,5 +152,5 @@ if __name__ == '__main__':
     if args.action == "train":
         train(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose)
     elif args.action == "visualize":
-        visualize(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose)
+        visualize(args.algorithm, model=args.model, degree=args.degree, verbose=args.verbose)
 
