@@ -13,77 +13,6 @@ from tqdm import tqdm
 from approximations import Linear, Polynomial
 from networks import MLP_Small, SimpleNN
 from buffers import ReplayBuffer
-# def polynomial_features(x, degree=2):
-#     """
-#     Compute polynomial features up to the given degree.
-#     x: Tensor of shape [batch_size, input_dim]
-#     Returns: Tensor of shape [batch_size, num_poly_features]
-#     """
-#     # Start with degree 1 features
-#     features = [x]
-    
-#     for d in range(2, degree + 1):
-#         features.append(x ** d)
-    
-#     return torch.cat(features, dim=1)
-
-# class SimpleSARSA(nn.Module):
-#     """A simple feedforward neural network for SARSA policy.
-#     It takes the state as input and outputs Q-values for each action.
-#     """
-#     def __init__(self, input_dim, output_dim):
-#         super(SimpleSARSA, self).__init__()
-#         self.fc1 = nn.Linear(input_dim, 512)
-#         self.fc2 = nn.Linear(512, output_dim)
-
-#     def forward(self, x):
-#         x = F.relu(self.fc1(x))
-#         return self.fc2(x)
-    
-# class LinearSARSA(nn.Module):
-#     """Linear function approximator for SARSA."""
-#     def __init__(self, input_dim, output_dim):
-#         super(LinearSARSA, self).__init__()
-#         self.linear = nn.Linear(input_dim, output_dim)
-
-#     def forward(self, x):
-#         return self.linear(x)
-    
-# class PolynomialSARSA(nn.Module):
-#     """Polynomial function approximator for SARSA."""
-#     def __init__(self, input_dim, output_dim, degree=2):
-#         super(PolynomialSARSA, self).__init__()
-#         self.degree = degree
-#         poly_dim = input_dim * degree  # e.g., x, x^2, ..., x^degree
-#         self.linear = nn.Linear(poly_dim, output_dim)
-
-#     def forward(self, x):
-#         poly_x = polynomial_features(x, self.degree)
-#         return self.linear(poly_x)
-
-# class ReplayBuffer:
-#     """A simple replay buffer to store experiences for training."""
-#     def __init__(self, capacity):
-#         self.buffer = deque(maxlen=capacity)
-
-#     def add(self, state, action, reward, next_state, done):
-#         self.buffer.append((state, action, reward, next_state, done))
-
-#     def sample(self, batch_size):
-#         samples = random.sample(self.buffer, batch_size)
-#         states, actions, rewards, next_states, dones = zip(*samples)
-
-#         return (
-#             torch.from_numpy(np.array(states)).float(),
-#             torch.tensor(actions, dtype=torch.int64),
-#             torch.tensor(rewards, dtype=torch.float32),
-#             torch.from_numpy(np.array(next_states)).float(),
-#             torch.tensor(dones, dtype=torch.float32)
-#         )
-
-#     def __len__(self):
-#         return len(self.buffer)
-
 
 class SARSA:
     """SARSA agent using a neural network for Q-value approximation (no replay buffer, online updates, decaying epsilon)."""
@@ -103,7 +32,7 @@ class SARSA:
         if model == "linear":
             self.policy = Linear(self.state_size, self.action_size)
         elif model == "nn":
-            self.policy = SimpleNN(self.state_size, self.action_size)
+            self.policy = MLP_Small(self.state_size, self.action_size)
         elif model == "poly":
             self.policy = Polynomial(self.state_size, self.action_size, degree=self.degree)
         else:

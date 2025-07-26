@@ -72,7 +72,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             lr=0.001, 
             epsilon=0.1
             )
-        agent.learn(total_episodes=100, max_steps_per_episode=2000, verbose=1)
+        log_data = agent.learn(total_episodes=100, max_steps_per_episode=2000, verbose=1)
         
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
@@ -155,6 +155,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.action == "train":
-        train(args.algorithm, seed=args.seed, verbose=args.verbose)
+        train(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose)
     elif args.action == "visualize":
-        visualize(args.algorithm, verbose=args.verbose)
+        visualize(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose)
+
