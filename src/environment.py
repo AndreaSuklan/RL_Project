@@ -96,9 +96,10 @@ class HillClimbEnv(gym.Env):
     """Custom Gymnasium environment for the Hill Climb game."""
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
 
-    def __init__(self, render_mode=None):
+    def __init__(self, render_mode=None, enable_coins=True):
         super().__init__()
         self.render_mode = render_mode
+        self.enable_coins = enable_coins
         self.screen = None
         self.clock = None
         
@@ -128,7 +129,8 @@ class HillClimbEnv(gym.Env):
         
         # --- Action & Observation Spaces ---
         self.action_space = spaces.Discrete(3)
-        high = np.array([np.inf] * 19, dtype=np.float32)
+        obs_size = 19 if self.enable_coins else 17
+        high = np.array([np.inf] * obs_size, dtype=np.float32)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
     def _destroy(self):
@@ -190,6 +192,10 @@ class HillClimbEnv(gym.Env):
         self.smooth_terrain_poly = list(zip(x_smooth, y_smooth))
 
     def _create_coins(self):
+        if not self.enable_coins:
+            self.coins = []
+            return
+        
         self.coins = []
         for i in range(5, len(self.terrain_poly), 5):
             x1, y1 = self.terrain_poly[i - 1]
@@ -304,8 +310,7 @@ class HillClimbEnv(gym.Env):
         reward = 0
         
         # Coin Reward
-        if self.coins_to_remove:
-            # Create a set of user data strings of coins to be removed
+        if self.enable_coins and self.coins_to_remove:            # Create a set of user data strings of coins to be removed
             unique_coins_to_remove = set(self.coins_to_remove)
             self.coins_collected += len(unique_coins_to_remove)
 
@@ -435,24 +440,24 @@ class HillClimbEnv(gym.Env):
         state.extend(lidar_readings)
 
         # Nearest Coin Data
-        nearest_coin_pos = None
-        if self.coins:
-            min_dist_sq = float('inf')
-            for coin in self.coins:
-                dist_sq = (pos - coin.position).lengthSquared
-                if dist_sq < min_dist_sq:
-                    min_dist_sq = dist_sq
-                    nearest_coin_pos = coin.position
-        
-        if nearest_coin_pos:
-            vec_to_coin = nearest_coin_pos - pos
-            car_angle = -chassis.angle
-            cos_a, sin_a = math.cos(car_angle), math.sin(car_angle)
-            local_x = vec_to_coin.x * cos_a - vec_to_coin.y * sin_a
-            local_y = vec_to_coin.x * sin_a + vec_to_coin.y * cos_a
-            state.extend([local_x, local_y])
-        else:
-            state.extend([0.0, 0.0])
+        if self.enable_coins:
+            nearest_coin_pos = None
+            if self.coins:
+                min_dist_sq = float('inf')
+                for coin in self.coins:
+                    dist_sq = (pos - coin.position).lengthSquared
+                    if dist_sq < min_dist_sq:
+                        min_dist_sq = dist_sq
+                        nearest_coin_pos = coin.position
+            if nearest_coin_pos:
+                vec_to_coin = nearest_coin_pos - pos
+                car_angle = -chassis.angle
+                cos_a, sin_a = math.cos(car_angle), math.sin(car_angle)
+                local_x = vec_to_coin.x * cos_a - vec_to_coin.y * sin_a
+                local_y = vec_to_coin.x * sin_a + vec_to_coin.y * cos_a
+                state.extend([local_x, local_y])
+            else:
+                state.extend([0.0, 0.0])
         
         return np.array(state, dtype=np.float32)
     
