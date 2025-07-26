@@ -1,3 +1,14 @@
 venv
 __pycache__
 ppo_hcr_tensorboard
+*.toc
+*.synctex.gz
+*.snm
+*.out
+*.nav
+*.log
+*.fls
+*.fdb_latexmk
+*.blg
+*.bbl
+*.aux

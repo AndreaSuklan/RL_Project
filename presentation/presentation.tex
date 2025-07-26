@@ -1,0 +1,87 @@
+% !TEX root = presentation/presentation.tex
+\documentclass[serif]{beamer}  % for 4:3 ratio
+\usepackage[T1]{fontenc} 
+\usepackage{hyperref}
+\usepackage{latexsym,amsmath,xcolor,multicol,booktabs,calligra}
+\usepackage{graphicx,pstricks,listings,stackengine}
+
+\author{
+    Giovanni Billo
+    \and  
+    Andrea Suklan
+    \and  
+    Carlos Velázquez Fernández
+}
+\title{Analysis of RL algorithms for a Simulated Hill Climb Racing Agent}
+\date{\small July 28, 2025}
+\usepackage{UoWstyle}
+
+% defs
+\def\cmd#1{\texttt{\color{red}\footnotesize $\backslash$#1}}
+\def\env#1{\texttt{\color{blue}\footnotesize #1}}
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{RGB}{153,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+\definecolor{halfgray}{gray}{0.55}
+
+\lstset{
+    basicstyle=\ttfamily\tiny,
+    keywordstyle=\bfseries\color{deepgreen},
+    emphstyle=\ttfamily\color{deepred},    % Custom highlighting style
+    stringstyle=\color{deepblue},
+    numbers=left,
+    numberstyle=\tiny\color{halfgray},
+    rulesepcolor=\color{red!20!green!20!blue!20},
+    frame=shadowbox,
+}
+
+
+\begin{document}
+
+
+\begin{frame}
+    \vfill
+    \begin{center}
+        \includegraphics[keepaspectratio, scale=0.15]{images/logo.jpg}
+        
+        \vspace{1cm}
+        
+        \begin{beamercolorbox}[wd=\textwidth,center,rounded=true]{title}
+            {\textbf{Analysis of RL algorithms for \\ a Simulated Hill Climb Racing Agent}}
+        \end{beamercolorbox}
+        
+        \vspace{1cm}
+        
+        {July 28, 2025}
+    \end{center}
+    \vfill
+\end{frame} 
+
+\begin{frame}    
+\tableofcontents[sectionstyle=show,
+subsectionstyle=show/shaded/hide,
+subsubsectionstyle=show/shaded/hide]
+\end{frame}
+
+
+\section{Introduction}
+
+\section{Environment}
+
+\section{Deep Q-Network}
+
+\section{Expected SARSA}
+
+\section{Proximal Policy Optimization}
+
+\section{Results}
+
+\begin{frame}
+\centering
+{\Huge Thank you!}
+\end{frame}
+
+\bibliography{ref}
+\bibliographystyle{plain}
+
+\end{document}
