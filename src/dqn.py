@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from approximations import Linear, Polynomial
 from base import RlAlgorithm
 from buffers import ReplayBuffer
 from tqdm import tqdm
@@ -29,22 +30,29 @@ class DQN(RlAlgorithm):
         self.model = model
         self.degree = degree
 
-         #Policy selection
-        if model == "linear":
-            self.model= Linear(env.observation_space.shape[0], env.action_space.n)
-        elif model == "nn":
-            self.model = MLP_Small(env.observation_space.shape[0], env.action_space.n)
-        elif model == "poly":
-            self.model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree=self.degree)
+        if isinstance(model, str):
+            self.model = self.__class__.create_model(env, model, degree)
         else:
-            raise ValueError(f"Unrecognized model {self.model}")
-       
+            self.model = model
+
         super().__init__(env, model=self.model, buffer_size=buffer_size, gamma=gamma, lr=lr, batch_size=batch_size, verbose=0)
 
 
         self.buffer = ReplayBuffer(capacity=buffer_size)
         self.performance_traj = []
 
+    @staticmethod
+    def create_model(env, model, degree):
+        if model == "linear":
+            model= Linear(env.observation_space.shape[0], env.action_space.n)
+        elif model == "nn":
+            model = MLP_Small(env.observation_space.shape[0], env.action_space.n)
+        elif model == "poly":
+            model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree=degree)
+        else:
+            raise ValueError(f"Unrecognized model {model}")
+        return model
+        
     def predict(self, observation, deterministic=True):
         state_tensor = torch.tensor(observation, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():

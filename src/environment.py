@@ -28,7 +28,7 @@ COIN_COLOR = (255, 215, 0)
 # --- Rewards and Penalties ---
 REWARD_DISTANCE = 5.0
 REWARD_COIN = 50.0
-REWARD_AIR_TIME = 40.0
+REWARD_AIR_TIME = 5
 PENALTY_COLLISION = -200.0
 PENALTY_TIME = -0.1
 
@@ -102,6 +102,10 @@ class HillClimbEnv(gym.Env):
         self.enable_coins = enable_coins
         self.screen = None
         self.clock = None
+
+        # --- Terrain ---
+        self.min_height = TERRAIN_HEIGHT / 2
+        self.max_height = (VIEWPORT_H / SCALE) * 0.8
         
         # --- World and Game Objects ---
         self.b2World = None
@@ -145,30 +149,17 @@ class HillClimbEnv(gym.Env):
         self.coins_to_remove = []
 
     def _create_terrain(self):
-        # Define a minimum height to keep the terrain on screen
-        MIN_TERRAIN_HEIGHT = TERRAIN_HEIGHT / 2
-        MAX_TERRAIN_HEIGHT = (VIEWPORT_H / SCALE) * 0.8
 
-        y = TERRAIN_HEIGHT
-        x = 0
-        self.terrain_poly = []
-        self.terrain_poly.append((x, TERRAIN_HEIGHT))
-        x += TERRAIN_STARTPAD
-        self.terrain_poly.append((x, TERRAIN_HEIGHT))
+        self.b2World = b2World(gravity=(0, -9.8))
+        self.b2World.contactListener = MyContactListener(self)
         
-        for _ in range(TERRAIN_LENGTH):
-            step = self.np_random.uniform(-TERRAIN_STEP * 2, TERRAIN_STEP * 2)
-            
-            # Check and correct the terrain height
-            if y + step < MIN_TERRAIN_HEIGHT:
-                step = abs(step)
-            elif y + step > MAX_TERRAIN_HEIGHT:
-                step = -abs(step)
-
-            y += step
-            x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
-            self.terrain_poly.append((x, y))
-
+        # Generate the initial terrain
+        self.terrain_poly = [(0, TERRAIN_HEIGHT)]
+        start_pad = [(TERRAIN_STARTPAD, TERRAIN_HEIGHT)]
+        initial_chunk = self._generate_terrain_chunk(TERRAIN_STARTPAD, TERRAIN_HEIGHT, TERRAIN_LENGTH)
+        self.terrain_poly.extend(start_pad + initial_chunk)
+        
+        # Create the initial physics body
         self.terrain = self.b2World.CreateStaticBody(userData="terrain")
         self.terrain.CreateEdgeChain(self.terrain_poly)
 
@@ -278,6 +269,7 @@ class HillClimbEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
+        self.np_random, seed = gym.utils.seeding.np_random(seed)
         self._destroy()
         
         self.b2World = b2World(gravity=(0, -9.8))
@@ -350,6 +342,26 @@ class HillClimbEnv(gym.Env):
         return reward
     
 
+    def _generate_terrain_chunk(self, start_x, start_y, num_segments):
+        """Generates a new chunk of terrain points."""
+        new_poly = []
+        x, y = start_x, start_y
+        
+        for _ in range(num_segments):
+            step = self.np_random.uniform(-TERRAIN_STEP * 2, TERRAIN_STEP * 2)
+            
+            if y + step < self.min_height:
+                step = abs(step)
+            elif y + step > self.max_height:
+                step = -abs(step)
+
+            y += step
+            x += self.np_random.uniform(TERRAIN_STEP * 2, TERRAIN_STEP * 4)
+            new_poly.append((x, y))
+        
+        return new_poly
+    
+
     def step(self, action):
         # --- Safely destroy bodies from the PREVIOUS step ---
         for body in self.bodies_to_destroy:
@@ -382,6 +394,26 @@ class HillClimbEnv(gym.Env):
         
         # --- Step the Physics World ---
         self.b2World.Step(1.0 / FPS, 6 * 30, 2 * 30)
+
+        # --- Infinite Terrain Generation Logic ---
+        car_x = self.car[0].position.x
+        end_of_terrain_x = self.terrain_poly[-1][0]
+        
+        # If the car is close to the end, generate a new chunk
+        if car_x > end_of_terrain_x - (VIEWPORT_W / SCALE):
+            last_x, last_y = self.terrain_poly[-1]
+            new_chunk = self._generate_terrain_chunk(last_x, last_y, TERRAIN_LENGTH // 2)
+            self.terrain_poly.extend(new_chunk)
+            
+            # Trim the old part of the terrain to save memory
+            self.terrain_poly = self.terrain_poly[- (TERRAIN_LENGTH + TERRAIN_LENGTH // 2):]
+            
+            # Recreate the physics body and smooth render points
+            self.b2World.DestroyBody(self.terrain)
+            self.terrain = self.b2World.CreateStaticBody(userData="terrain")
+            self.terrain.CreateEdgeChain(self.terrain_poly)
+
+
         obs = self._get_observation()
 
         # --- Calculate Rewards and Queue Coin Destruction ---

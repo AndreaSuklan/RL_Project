@@ -5,8 +5,6 @@ from environment import HillClimbEnv
 from ppo import PPO
 from dqn import DQN
 from sarsa import SARSA 
-from networks import SimpleNN, ActorCritic, MLP_Small
-from approximations import Linear, Polynomial
 
 MODELS_DIR = "./models"
 LOGS_DIR = "./logs"
@@ -24,8 +22,6 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
         run_name = f"{algorithm}_{model}_d{degree}_{seed}"
     else:
         run_name = f"{algorithm}_{model}_{seed}"
-
-
 
     env = HillClimbEnv(enable_coins=False)
 
@@ -48,13 +44,9 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             batch_size=64, 
         )
 
-        log_data = agent.learn(total_timesteps=100000, verbose=verbose)
+        log_data = agent.learn(total_timesteps=200000, verbose=verbose)
         
     elif algorithm == 'dqn':
-        # model = SimpleDQN(
-        #     input_dim=env.observation_space.shape[0],
-        #     output_dim=env.action_space.n
-        # )
         agent = DQN(
             env,
             model=model,
@@ -63,7 +55,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             lr=0.001, 
             epsilon=0.1, 
             batch_size=64)
-        log_data = agent.learn(total_timesteps=100000, verbose=verbose)
+        log_data = agent.learn(total_timesteps=10000, verbose=verbose)
 
     elif algorithm == 'sarsa':
         agent = SARSA(
@@ -109,21 +101,24 @@ def visualize(algorithm, model = "nn", degree=3, verbose=0):
         model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
 
     if not os.path.exists(model_path):
-                model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
+        model_path = os.path.join(MODELS_DIR, f"{algorithm}_hill_climb.zip")
 
     if not os.path.exists(model_path):
         print(f"Error: Model not found at {model_path}. Please train it first.")
         return
 
     print(f"--- Loading model: {model_path} ---")
-    env = HillClimbEnv(render_mode="human")
+    env = HillClimbEnv(enable_coins=False, render_mode="human")
 
     if algorithm == 'ppo':
-        model = PPO.load(model_path, env=env, model_class=ActorCritic)
+        m = PPO.create_model(env=env, model=model)
+        model = PPO.load(model_path, env=env, model=m)
     elif algorithm == 'dqn':
-        model = DQN.load(model_path, env=env, model_class=SimpleDQN)
+        m = DQN.create_model(env, model, degree=degree)
+        model = DQN.load(model_path, env=env, model=m)
     elif algorithm == 'sarsa':
-        model = SARSA.load(model_path, env=env)
+        m = SARSA.create_model(env, model, degree=degree)
+        model = SARSA.load(model_path, env=env, model=m)
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
         env.close()
