@@ -127,12 +127,12 @@ class SARSA:
 
         # compute expectation for ExpectedSarsa
         with torch.no_grad():
-            next_q = self.policy(next_state_tensor)              # tensor [n_actions]
+            next_q = self.policy(next_state_tensor)             
             n = next_q.size(0)
             greedy = torch.argmax(next_q)
             probs = torch.full((n,), self.epsilon / n, device=next_q.device)
             probs[greedy] += 1 - self.epsilon
-            expected_next_q = (probs * next_q).sum()             # still a tensor
+            expected_next_q = (probs * next_q).sum()            
 
         target = reward + self.gamma * expected_next_q * (1 - done)
         loss = F.mse_loss(q_value, target)
@@ -149,31 +149,49 @@ class SARSA:
             total_episodes: Total number of episodes to train the agent.
             max_steps_per_episode: Maximum steps per episode.
             verbose: Verbosity level (0 for no output, 1 for progress updates).
-        """ 
+        """
+        log_data = []
+        current_timesteps = 0
         self.performance_traj = []
+
         for episode in tqdm(range(total_episodes), desc="Training Episodes"):
             state, _ = self.env.reset()
-            total_reward = 0
+            episode_reward = 0
+            episode_losses = []
 
-            for _ in range(max_steps_per_episode):
+            for step in range(max_steps_per_episode):
                 action = self.select_action(state)
                 next_state, reward, terminated, truncated, _ = self.env.step(action)
                 done = terminated or truncated
 
                 loss = self.train_step(state, action, reward, next_state, done)
+                if loss is not None:
+                    episode_losses.append(loss)
+
                 state = next_state
-                total_reward += reward
+                episode_reward += reward
+                current_timesteps += 1
 
                 if done:
                     break
 
             # Decay epsilon
             self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
-            self.performance_traj.append(total_reward)
+            self.performance_traj.append(episode_reward)
+
+            mean_loss = np.mean(episode_losses) if episode_losses else None
+            log_data.append({
+                "timestep": current_timesteps,
+                "reward": episode_reward,
+                "value_loss": mean_loss
+            })
 
             if verbose > 0 and (episode + 1) % 10 == 0:
                 mean_reward = np.mean(self.performance_traj[-10:])
-                print(f"\nEpisode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss:.4f}" if loss is not None else f"Episode {episode+1}, Mean Reward (last 10): {mean_reward:.2f}")
+                print_loss = mean_loss if mean_loss is not None else float('nan')
+                print(f"\nEpisode {episode+1}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}, Mean Loss: {print_loss:.4f}")
+
+        return log_data
 
     def predict(self, observation, deterministic=True):
         """Predict the action based on the current observation.
