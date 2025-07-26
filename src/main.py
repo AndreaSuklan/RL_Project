@@ -20,7 +20,12 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
     print(f"--- Starting training for {algorithm.upper()} with {model} model and seed {seed} ---")
 
     
-    run_name = f"{algorithm}_{seed}"
+    if model == "poly":
+        run_name = f"{algorithm}_{model}_d{degree}_{seed}"
+    else:
+        run_name = f"{algorithm}_{model}_{seed}"
+
+
 
     env = HillClimbEnv(enable_coins=False)
 
