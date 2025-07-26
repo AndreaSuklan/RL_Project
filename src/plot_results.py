@@ -85,6 +85,9 @@ def main():
             log_path = os.path.join(LOGS_DIR, filename)
             try:
                 df = pd.read_csv(log_path, sep = ";")
+# =======
+#                 df = pd.read_csv(log_path)
+# >>>>>>> 43820d8b4d8ede0b51a0db32bb55cdaf9e6f1019
                 
                 # --- NEW: Standardize the reward column ---
                 # If a 'mean_reward' column exists (from PPO), rename it to 'reward'.

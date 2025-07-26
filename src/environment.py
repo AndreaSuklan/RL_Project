@@ -16,7 +16,7 @@ TERRAIN_STEP = 20 / SCALE
 TERRAIN_LENGTH = 200
 TERRAIN_HEIGHT = VIEWPORT_H / SCALE / 4
 TERRAIN_STARTPAD = 40 / SCALE
-ACCELERATION = 25.0
+ACCELERATION = 20.0
 TORQUE = 10.0
 
 # --- Colors ---
@@ -26,9 +26,9 @@ GRASS_COLOR = (20, 150, 30)
 COIN_COLOR = (255, 215, 0)
 
 # --- Rewards and Penalties ---
-REWARD_DISTANCE = 2.0
+REWARD_DISTANCE = 5.0
 REWARD_COIN = 50.0
-REWARD_AIR_TIME = 50.0
+REWARD_AIR_TIME = 40.0
 PENALTY_COLLISION = -200.0
 PENALTY_TIME = -0.1
 
@@ -383,7 +383,7 @@ class HillClimbEnv(gym.Env):
         reward = self._calculate_reward()
 
         # --- Handle Termination and Truncation ---
-        truncated = self.step_count > 2500
+        truncated = self.step_count > 5000
         #truncated = False
 
         # Check for being stuck

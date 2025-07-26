@@ -1,0 +1,11 @@
+# PRESENTATION CHECKLIST
+- Say **where** are in the usual graph with model knowledge and observability with the algorithms we use.
+- Define our algorithms:
+    - model free: what does it mean?
+    - what kind of approximations they use?
+    - do they bootstrap?
+    - define the error 
+    - on policy VS off-policy: what does it mean? 
+- Make a story for the problems:
+    - DQN unstable: why? How did we try to solve it? Did we succeed?
+    - Moving target problem: in theory and in our environment specifically.

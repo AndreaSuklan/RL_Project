@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=128
 # SBATCH --gpus=1
-#SBATCH --mem=128G
+#SBATCH --mem=256G
 #SBATCH --partition=EPYC
 #SBATCH --account=dssc
 #SBATCH --time=02:00:00
@@ -82,7 +82,5 @@ echo "==== CMD ===="        >> "$LOGFILE"
 echo "python3 main.py ${RL_ARGS[@]}" >> "$LOGFILE"
 
 # === Launch ===
-# torchrun --nproc_per_node=$SLURM_GPUS \
-#          brew_and_visualize_poison2.py "${BREW_ARGS[@]}" >> "logs/train_${SLURM_JOB_ID}.log" 2>&1
-python3 src/main.py ${RL_ARGS[@]} >> "logs/train_${SLURM_JOB_ID}.log" 2>&1
+python3 src/main.py ${RL_ARGS[@]} >> "logs/train_${RL_ARGS[0]}_${RL_ARGS[1]}_${SLURM_JOB_ID}.log" 2>&1
 
