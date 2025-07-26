@@ -55,7 +55,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             lr=0.001, 
             epsilon=0.1, 
             batch_size=64)
-        log_data = agent.learn(total_timesteps=10000, verbose=verbose)
+        log_data = agent.learn(total_timesteps=200000, verbose=verbose)
 
     elif algorithm == 'sarsa':
         agent = SARSA(

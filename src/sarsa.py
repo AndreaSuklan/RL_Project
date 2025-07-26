@@ -29,9 +29,9 @@ class SARSA:
         self.degree = degree
 
         if isinstance(model, str):
-            self.model = self.__class__.create_model(env, model, degree)
+            self.policy = self.__class__.create_model(env, model, degree)
         else:
-            self.model = model
+            self.policy = model
         
         self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
         self.performance_traj = []

@@ -12,17 +12,17 @@ ROLLING_WINDOW = 25
 def plot_learning_curve(df, title, filename):
     """Plots the smoothed reward curve for all algorithms."""
     plt.figure(figsize=(12, 7))
-    df['smoothed_reward'] = df.groupby(['algorithm', 'seed'])['reward'].transform(
+    df['smoothed_reward'] = df.groupby(['algorithm', "model"])['reward'].transform(
         lambda x: x.rolling(ROLLING_WINDOW, min_periods=1).mean()
     )
     
-    sns.lineplot(data=df, x='timestep', y='smoothed_reward', hue='algorithm', errorbar='sd', legend=True)
+    sns.lineplot(data=df, x='timestep', y='smoothed_reward', hue='algorithm', style="model",  errorbar='sd', legend=True)
     
     plt.title(title, fontsize=16)
     plt.xlabel('Timesteps', fontsize=12)
     plt.ylabel(f'Mean Episode Reward (Rolling Avg. of {ROLLING_WINDOW})', fontsize=12)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-    plt.legend(title='Algorithm')
+    plt.legend(title='Algorithm and Model')
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, filename))
     print(f"Saved plot: {filename}")
@@ -32,8 +32,11 @@ def plot_metric(df, metric_col, title, filename, y_log_scale=False):
     """Plots a generic metric curve (e.g., loss, entropy) for all algorithms."""
     plt.figure(figsize=(12, 7))
     metric_df = df.dropna(subset=[metric_col])
-    
-    sns.lineplot(data=metric_df, x='timestep', y=metric_col, hue='algorithm', errorbar='sd', legend=True)
+    df[metric_col] = df.groupby(['algorithm', "model"])[metric_col].transform(
+        lambda x: x.rolling(ROLLING_WINDOW, min_periods=1).mean()
+    )
+
+    sns.lineplot(data=metric_df, x='timestep', y=metric_col, hue='algorithm', style = "model", errorbar='sd', legend=True)
     
     plt.title(title, fontsize=16)
     plt.xlabel('Timesteps', fontsize=12)
@@ -51,7 +54,7 @@ def plot_metric(df, metric_col, title, filename, y_log_scale=False):
 
 def plot_final_performance_bar_chart(df, title, filename):
     """Plots a bar chart of the final performance."""
-    final_rewards = df.groupby(['algorithm', 'seed'])['reward'].apply(
+    final_rewards = df.groupby(['algorithm'])['reward'].apply(
         lambda x: x.tail(int(len(x) * 0.1)).mean()
     )
     
@@ -84,11 +87,8 @@ def main():
         if filename.endswith(".csv"):
             log_path = os.path.join(LOGS_DIR, filename)
             try:
-                df = pd.read_csv(log_path, sep = ";")
-# =======
-#                 df = pd.read_csv(log_path)
-# >>>>>>> 43820d8b4d8ede0b51a0db32bb55cdaf9e6f1019
-                
+                df = pd.read_csv(log_path)
+
                 # --- NEW: Standardize the reward column ---
                 # If a 'mean_reward' column exists (from PPO), rename it to 'reward'.
                 if 'mean_reward' in df.columns:
@@ -97,7 +97,13 @@ def main():
                 # Parse algorithm and seed from filename (e.g., 'ppo_0.csv')
                 parts = filename.replace('.csv', '').split('_')
                 df['algorithm'] = parts[0].upper()
-                df['seed'] = int(parts[1])
+                df['model'] = parts[1]
+                if len(parts) > 3:
+                    df["degree"] = int(parts[2])
+                    df['seed'] = int(parts[3])
+                else:
+                    df['seed'] = int(parts[2])
+                    df["degreee"] = None
                 
                 all_data.append(df)
             except Exception as e:
@@ -110,7 +116,7 @@ def main():
     full_df = pd.concat(all_data, ignore_index=True)
 
     # --- Generate All Plots (This section is unchanged) ---
-    plot_learning_curve(full_df, "Learning Curves: PPO vs DQN", "reward_curve.png")
+    plot_learning_curve(full_df, "Learning Curves", "reward_curve.png")
     plot_metric(full_df, 'value_loss', 'Value Loss over Time', 'value_loss_curve.png', y_log_scale=True)
     
     ppo_df = full_df[full_df['algorithm'] == 'PPO']

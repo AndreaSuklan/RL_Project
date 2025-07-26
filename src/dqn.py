@@ -106,10 +106,7 @@ class DQN(RlAlgorithm):
 
         state, _ = self.env.reset()
         current_timesteps = 0
-        episode_reward = 0
         episode_num = 0
-
-        episode_losses = []
 
         pbar = tqdm(total=total_timesteps, desc="Training DQN")
 
@@ -120,23 +117,20 @@ class DQN(RlAlgorithm):
 
             self.buffer.add(state, action, reward, next_state, done)
             state = next_state
-            episode_reward += reward
 
             self.performance_traj.append(reward)
             current_timesteps += 1
             pbar.update(1)
 
             loss, _ = self.train_step()
-            if loss is not None:
-                episode_losses.append(loss)
+
+            log_data.append({
+                    "timestep": current_timesteps,
+                    "reward": reward,
+                    "value_loss": loss
+                })
 
             if done:
-                mean_loss = np.mean(episode_losses) if episode_losses else None
-                log_data.append({
-                    "timestep": current_timesteps,
-                    "reward": episode_reward,
-                    "value_loss": mean_loss
-                })
                 episode_num += 1
 
                 if self.verbose >= 1 and episode_num % 10 == 0:
@@ -145,8 +139,6 @@ class DQN(RlAlgorithm):
                     print(f"\n[INFO] Episode {episode_num}, Timestep {current_timesteps}, Mean Reward (last 10): {mean_reward:.2f}, Last Loss: {loss_display}")
 
                 state, _ = self.env.reset()
-                episode_reward = 0
-                episode_losses = []
 
         pbar.close()
         return log_data

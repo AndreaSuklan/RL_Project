@@ -73,7 +73,7 @@ class MyContactListener(b2ContactListener):
         # --- Crash Detection ---
         if (dataA == "human" and dataB == "terrain") or \
            (dataA == "terrain" and dataB == "human"):
-            self.env.terminated = True
+            self.env.crash_detected = True
 
         # --- Air-time Detection ---
         if dataA == "terrain" and dataB in ["chassis", "wheel_-1", "wheel_1"]:
@@ -82,6 +82,10 @@ class MyContactListener(b2ContactListener):
             self.env.ground_contacts.add(dataA)
 
     def EndContact(self, contact):
+        # First, check if both bodies involved in the contact are still active
+        if not contact.fixtureA.body.active or not contact.fixtureB.body.active:
+            return
+
         dataA = contact.fixtureA.body.userData
         dataB = contact.fixtureB.body.userData
         
@@ -130,6 +134,8 @@ class HillClimbEnv(gym.Env):
         self.coins_collected = 0
         self.max_x_achieved = 0.0
         self.steps_since_progress = 0
+        self.coin_id_counter = 0
+        self.crash_detected = False
         
         # --- Action & Observation Spaces ---
         self.action_space = spaces.Discrete(3)
@@ -202,7 +208,8 @@ class HillClimbEnv(gym.Env):
                     shape=b2CircleShape(radius=0.3),
                 )
             )
-            coin.userData = f"coin_{len(self.coins)}"
+            coin.userData = f"coin_{self.coin_id_counter}"
+            self.coin_id_counter += 1
             self.coins.append(coin)
 
     def _create_car(self):
@@ -290,6 +297,8 @@ class HillClimbEnv(gym.Env):
         self.air_time_steps = 0
         self.max_x_achieved = TERRAIN_STARTPAD / 2
         self.steps_since_progress = 0
+        self.coin_id_counter = 0
+        self.crash_detected = False
 
         self.bodies_to_destroy.clear()
         self.ground_contacts.clear()
@@ -319,7 +328,6 @@ class HillClimbEnv(gym.Env):
                 reward += REWARD_COIN
                 if coin in self.coins:
                     self.bodies_to_destroy.append(coin)
-                    self.coins.remove(coin)
 
             self.coins_to_remove.clear()
         
@@ -363,10 +371,22 @@ class HillClimbEnv(gym.Env):
     
 
     def step(self, action):
+        # --- Clean up old coins far behind the car ---
+        car_x = self.car[0].position.x
+        for coin in list(self.coins): # Iterate over a copy
+            if coin.position.x < car_x - (VIEWPORT_W / SCALE):
+                if coin not in self.bodies_to_destroy:
+                    self.bodies_to_destroy.append(coin)
+
         # --- Safely destroy bodies from the PREVIOUS step ---
         for body in self.bodies_to_destroy:
             if body.active:
+                # First, destroy the physics body
                 self.b2World.DestroyBody(body)
+                
+                # Then, remove it from the tracking list
+                if body in self.coins:
+                    self.coins.remove(body)
         self.bodies_to_destroy.clear()
 
         # --- Update the air time counter ---
@@ -395,6 +415,10 @@ class HillClimbEnv(gym.Env):
         # --- Step the Physics World ---
         self.b2World.Step(1.0 / FPS, 6 * 30, 2 * 30)
 
+        # --- Handle Crash Detection Safely ---
+        if self.crash_detected:
+          self.terminated = True
+
         # --- Infinite Terrain Generation Logic ---
         car_x = self.car[0].position.x
         end_of_terrain_x = self.terrain_poly[-1][0]
@@ -403,6 +427,26 @@ class HillClimbEnv(gym.Env):
         if car_x > end_of_terrain_x - (VIEWPORT_W / SCALE):
             last_x, last_y = self.terrain_poly[-1]
             new_chunk = self._generate_terrain_chunk(last_x, last_y, TERRAIN_LENGTH // 2)
+            
+            # Create new coins along the new terrain chunk
+            for i in range(5, len(new_chunk), 5):
+                x1, y1 = new_chunk[i - 1]
+                x2, y2 = new_chunk[i]
+                
+                coin_x = (x1 + x2) / 2
+                coin_y = (y1 + y2) / 2 + 0.8
+                
+                coin = self.b2World.CreateStaticBody(
+                    position=(coin_x, coin_y),
+                    fixtures=b2FixtureDef(
+                        isSensor=True,
+                        shape=b2CircleShape(radius=0.3),
+                    )
+                )
+                coin.userData = f"coin_{self.coin_id_counter}"
+                self.coin_id_counter += 1
+                self.coins.append(coin)
+
             self.terrain_poly.extend(new_chunk)
             
             # Trim the old part of the terrain to save memory
@@ -412,6 +456,13 @@ class HillClimbEnv(gym.Env):
             self.b2World.DestroyBody(self.terrain)
             self.terrain = self.b2World.CreateStaticBody(userData="terrain")
             self.terrain.CreateEdgeChain(self.terrain_poly)
+            x_coords = [p[0] for p in self.terrain_poly]
+            y_coords = [p[1] for p in self.terrain_poly]
+            spline = make_interp_spline(x_coords, y_coords, k=3)
+            num_smooth_points = len(self.terrain_poly) * 10
+            x_smooth = np.linspace(min(x_coords), max(x_coords), num_smooth_points)
+            y_smooth = spline(x_smooth)
+            self.smooth_terrain_poly = list(zip(x_smooth, y_smooth))
 
 
         obs = self._get_observation()
