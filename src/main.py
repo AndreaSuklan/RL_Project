@@ -20,7 +20,12 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
     print(f"--- Starting training for {algorithm.upper()} with {model} model and seed {seed} ---")
 
     
-    run_name = f"{algorithm}_{seed}"
+    if model == "poly":
+        run_name = f"{algorithm}_{model}_d{degree}_{seed}"
+    else:
+        run_name = f"{algorithm}_{model}_{seed}"
+
+
 
     env = HillClimbEnv(enable_coins=False)
 
@@ -28,15 +33,9 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
         env.reset(seed=seed)
 
     if algorithm == 'ppo':
-# <<<<<<< HEAD
-#         if model != "nn":
-#             print(f"Warning: PPO does not support {model} model, using 'nn' instead.")
-#             model = "nn"
-# =======
-        model = ActorCritic(
-            state_dim=env.observation_space.shape[0],
-            action_dim=env.action_space.n
-        )
+        if model != "nn":
+            print(f"Warning: PPO does not support {model} model, using 'nn' instead.")
+            model = "nn"
         agent = PPO(
             env,
             model=model,
