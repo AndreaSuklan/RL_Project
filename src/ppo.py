@@ -114,13 +114,14 @@ class PPO(RlAlgorithm):
                 current_timesteps += 1
 
                 if done or truncated:
-                    episode_num += 1
-                    pbar.update(1)
-                    episode_rewards.append(current_reward)
-                    current_reward = 0
+                    
                     state, _ = self.env.reset()
-                    break
 
+            episode_num += 1
+            pbar.update(1)
+            episode_rewards.append(current_reward)
+            current_reward = 0
+            
             with torch.no_grad():
                 last_state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
                 _, last_value = self.model(last_state_tensor)
