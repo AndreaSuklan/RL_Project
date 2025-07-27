@@ -91,6 +91,19 @@ python src/main.py visualize dqn
 python src/main.py visualize sarsa --model poly --degree 2
 ```
 
+### Plotting the performance
+Use the plotting_results script to save the plots of rewards and mean loss per episode, or also the entropy specifically for ppo
+
+**Plot rewards and losses of all the algorithms compared:**
+```bash
+python .\src\plot_results.py
+```
+
+**Select which algorithm to plot with different function approximation methods:**
+```bash
+python .\src\plot_results.py --alg dqn
+```
+
 
 ## Outputs
 
