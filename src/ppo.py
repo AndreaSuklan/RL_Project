@@ -5,14 +5,18 @@ from buffers import RolloutBuffer
 from base import RlAlgorithm
 from tqdm import tqdm
 from networks import ActorCritic
+from base import set_seed
 
 class PPO(RlAlgorithm):
     def __init__(self, env, model, buffer_size=1, gamma=0.99, gae_lambda=0.95,
-                 lr=3e-4, clip_epsilon=0.2, n_epochs=10, batch_size=64):
+                 lr=3e-4, clip_epsilon=0.2, n_epochs=10, batch_size=64, seed=None):
         self.gae_lambda = gae_lambda
         self.clip_epsilon = clip_epsilon
         self.n_epochs = n_epochs
         self.batch_size = batch_size
+        self.seed = seed
+        set_seed(self.seed)
+        
         if isinstance(model, str):
             self.model = self.__class__.create_model(env, model)
         else:
@@ -108,10 +112,10 @@ class PPO(RlAlgorithm):
                 state = next_state
                 current_reward += reward
                 current_timesteps += 1
-                pbar.update(1)
 
                 if done or truncated:
                     episode_num += 1
+                    pbar.update(1)
                     episode_rewards.append(current_reward)
                     current_reward = 0
                     state, _ = self.env.reset()

@@ -41,7 +41,8 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             lr=3e-4, 
             clip_epsilon=0.2, 
             n_epochs=10, 
-            batch_size=64, 
+            batch_size=64,
+            seed=seed
         )
 
         log_data = agent.learn(total_episodes=10, verbose=verbose)
@@ -54,7 +55,8 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             buffer_size=10000, 
             lr=0.001, 
             epsilon=0.1, 
-            batch_size=64)
+            batch_size=64,
+            seed=seed)
         log_data = agent.learn(total_episodes=20, verbose=1)
 
     elif algorithm == 'sarsa':
@@ -62,7 +64,8 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             env, 
             gamma=0.99, 
             lr=0.001, 
-            epsilon=0.1
+            epsilon=0.1,
+            seed=seed
             )
         log_data = agent.learn(total_episodes=20, verbose=1)
         

@@ -9,6 +9,7 @@ import zipfile
 import pickle
 import os
 from tqdm import tqdm
+from base import set_seed
 
 from approximations import Linear, Polynomial
 from networks import MLP_Small, SimpleNN
@@ -16,7 +17,7 @@ from buffers import ReplayBuffer
 
 class SARSA:
     """SARSA agent using a neural network for Q-value approximation (no replay buffer, online updates, decaying epsilon)."""
-    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, min_epsilon=0.01, epsilon_decay=0.995, model="nn", degree=3):
+    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, min_epsilon=0.01, epsilon_decay=0.995, model="nn", degree=3, seed =None):
         self.env = env
         self.gamma = gamma
         self.lr = lr
@@ -27,7 +28,8 @@ class SARSA:
         self.action_size = env.action_space.n
         self.model = model
         self.degree = degree
-
+        self.seed = seed
+        set_seed(seed)
         if isinstance(model, str):
             self.policy = self.__class__.create_model(env, model, degree)
         else:
