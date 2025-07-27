@@ -117,7 +117,7 @@ def main():
 
     # --- Generate All Plots (This section is unchanged) ---
     plot_learning_curve(full_df, "Learning Curves", "reward_curve.png")
-    plot_metric(full_df, 'value_loss', 'Value Loss over Time', 'value_loss_curve.png', y_log_scale=True)
+    plot_metric(full_df, 'value_loss', 'Value Loss over Time', 'value_loss_curve.png')
     
     ppo_df = full_df[full_df['algorithm'] == 'PPO']
     if not ppo_df.empty:
