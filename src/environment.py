@@ -101,12 +101,13 @@ class HillClimbEnv(gym.Env):
     """Custom Gymnasium environment for the Hill Climb game."""
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": FPS}
 
-    def __init__(self, render_mode=None, enable_coins=True):
+    def __init__(self, render_mode=None, enable_coins=True, seed=None):
         super().__init__()
         self.render_mode = render_mode
         self.enable_coins = enable_coins
         self.screen = None
         self.clock = None
+        self.seed = seed
 
         # --- Terrain ---
         self.min_height = TERRAIN_HEIGHT / 2
@@ -278,9 +279,11 @@ class HillClimbEnv(gym.Env):
         self.b2World.CreateWeldJoint(bodyA=chassis_body, bodyB=human_body, anchor=human_body.position)
         self.car = (chassis_body, wheels, suspensions, human_body)
 
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-        self.np_random, seed = gym.utils.seeding.np_random(seed)
+    def reset(self, options=None):
+        super().reset(seed=self.seed)
+        self.np_random, seed = gym.utils.seeding.np_random(self.seed)
+        self.action_space.seed(self.seed)
+        self.seed += 1
         self._destroy()
         
         self.b2World = b2World(gravity=(0, -9.8))

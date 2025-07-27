@@ -23,10 +23,10 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
     else:
         run_name = f"{algorithm}_{model}_{seed}"
 
-    env = HillClimbEnv(enable_coins=False)
+    env = HillClimbEnv(enable_coins=False, seed=seed)
 
     if seed is not None:
-        env.reset(seed=seed)
+        env.reset()
 
     if algorithm == 'ppo':
         if model != "nn":
@@ -44,7 +44,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             batch_size=64, 
         )
 
-        log_data = agent.learn(total_episodes=20, verbose=verbose)
+        log_data = agent.learn(total_episodes=10, verbose=verbose)
         
     elif algorithm == 'dqn':
         agent = DQN(
@@ -87,7 +87,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
     env.close()
 
 
-def visualize(algorithm, model = "nn", degree=3, verbose=0):
+def visualize(algorithm, model = "nn", degree=3, verbose=0, seed=None):
     """
     Visualizes a pre-trained agent.
     """
@@ -108,7 +108,7 @@ def visualize(algorithm, model = "nn", degree=3, verbose=0):
         return
 
     print(f"--- Loading model: {model_path} ---")
-    env = HillClimbEnv(enable_coins=False, render_mode="human")
+    env = HillClimbEnv(enable_coins=False, render_mode="human", seed=seed)
 
     if algorithm == 'ppo':
         m = PPO.create_model(env=env, model=model)
@@ -152,5 +152,5 @@ if __name__ == '__main__':
     if args.action == "train":
         train(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose)
     elif args.action == "visualize":
-        visualize(args.algorithm, model=args.model, degree=args.degree, verbose=args.verbose)
+        visualize(args.algorithm, model=args.model, degree=args.degree, verbose=args.verbose, seed=args.seed)
 
