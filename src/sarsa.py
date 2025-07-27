@@ -31,7 +31,7 @@ class SARSA:
         self.seed = seed
         set_seed(seed)
         if isinstance(model, str):
-            self.policy = self.__class__.create_model(env, model, degree)
+            self.policy = self.__class__.create_model(env, model, self.degree)
         else:
             self.policy = model
         
@@ -45,7 +45,7 @@ class SARSA:
         elif model == "nn":
             model = MLP_Small(env.observation_space.shape[0], env.action_space.n)
         elif model == "poly":
-            model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree=degree)
+            model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree = degree)
         else:
             raise ValueError(f"Unrecognized model {model}")
         return model
@@ -136,13 +136,7 @@ class SARSA:
         return log_data
 
     def predict(self, observation, deterministic=True):
-        """Predict the action based on the current observation.
-        Args:
-            observation: The current state of the environment.
-            deterministic: If True, select the action with the highest Q-value.
-        Returns:
-            The predicted action.
-        """
+
         state_tensor = torch.tensor(observation, dtype=torch.float32)
         with torch.no_grad():
             q_values = self.policy(state_tensor)
@@ -153,7 +147,6 @@ class SARSA:
                 return np.random.choice(self.action_size, p=probs)
 
     def save(self, path="sarsa_model.zip"):
-        """Save the SARSA model to a zip file."""
         tmp_dir = "tmp_sarsa_save"
         os.makedirs(tmp_dir, exist_ok=True)
 
@@ -180,8 +173,7 @@ class SARSA:
         os.rmdir(tmp_dir)
 
     @classmethod
-    def load(cls, path, env):
-        """Load a SARSA model from a zip file."""
+    def load(cls, path, env, model="nn", degree=3):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp_dir:
             with zipfile.ZipFile(path, 'r') as zipf:
