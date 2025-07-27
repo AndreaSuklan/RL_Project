@@ -44,7 +44,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             batch_size=64, 
         )
 
-        log_data = agent.learn(total_timesteps=200000, verbose=verbose)
+        log_data = agent.learn(total_episodes=20, verbose=verbose)
         
     elif algorithm == 'dqn':
         agent = DQN(
@@ -55,7 +55,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             lr=0.001, 
             epsilon=0.1, 
             batch_size=64)
-        log_data = agent.learn(total_timesteps=200000, verbose=verbose)
+        log_data = agent.learn(total_episodes=20, verbose=1)
 
     elif algorithm == 'sarsa':
         agent = SARSA(
@@ -64,7 +64,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             lr=0.001, 
             epsilon=0.1
             )
-        log_data = agent.learn(total_episodes=100, max_steps_per_episode=2000, verbose=1)
+        log_data = agent.learn(total_episodes=20, verbose=1)
         
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")

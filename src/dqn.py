@@ -102,7 +102,7 @@ class DQN(RlAlgorithm):
 
         return loss.item(), None
 
-    def learn(self, total_timesteps, verbose=0):
+    def learn(self, total_episodes, verbose=0):
         self.verbose = verbose  # set the verbosity level
         log_data = []
 
@@ -112,9 +112,9 @@ class DQN(RlAlgorithm):
         episode_loss = []
         episode_reward = 0
 
-        pbar = tqdm(total=total_timesteps, desc="Training DQN")
+        pbar = tqdm(total=total_episodes, desc="Training DQN")
 
-        while current_timesteps < total_timesteps:
+        while episode_num < total_episodes:
             action = self.select_action(state)
             next_state, reward, terminated, truncated, _ = self.env.step(action)
             done = terminated or truncated
@@ -143,6 +143,7 @@ class DQN(RlAlgorithm):
 
                 log_data.append({
                     "timestep": current_timesteps,
+                    "episode": episode_num,
                     "reward": episode_reward,
                     "value_loss": np.mean(episode_loss)
                 })
