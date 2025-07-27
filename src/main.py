@@ -11,15 +11,16 @@ LOGS_DIR = "./logs"
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
-def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
+def train(algorithm, seed=None, model = "nn", degree=3, buffer_size=2048, verbose=0):
     """
     Trains a new agent by calling the appropriate creation function.
     """
     print(f"--- Starting training for {algorithm.upper()} with {model} model and seed {seed} ---")
 
-    
     if model == "poly":
-        run_name = f"{algorithm}_{model}_d{degree}_{seed}"
+        run_name = f"{algorithm}_{model}_{degree}_{seed}"
+    elif algorithm == "ppo":
+        run_name = f"{algorithm}_{model}_{buffer_size}_{seed}"        
     else:
         run_name = f"{algorithm}_{model}_{seed}"
 
@@ -35,17 +36,16 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
         agent = PPO(
             env,
             model=model,
-            buffer_size=2048, 
+            buffer_size=buffer_size, 
             gamma=0.99, 
             gae_lambda=0.95, 
             lr=3e-4, 
             clip_epsilon=0.2, 
             n_epochs=10, 
-            batch_size=64,
-            seed=seed
+            batch_size=64, 
         )
 
-        log_data = agent.learn(total_episodes=10, verbose=verbose)
+        log_data = agent.learn(total_episodes=50, verbose=verbose)
         
     elif algorithm == 'dqn':
         agent = DQN(
@@ -55,19 +55,17 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             buffer_size=10000, 
             lr=0.001, 
             epsilon=0.1, 
-            batch_size=64,
-            seed=seed)
-        log_data = agent.learn(total_episodes=20, verbose=1)
+            batch_size=64)
+        log_data = agent.learn(total_episodes=50, verbose=verbose)
 
     elif algorithm == 'sarsa':
         agent = SARSA(
             env, 
             gamma=0.99, 
             lr=0.001, 
-            epsilon=0.1,
-            seed=seed
+            epsilon=0.1
             )
-        log_data = agent.learn(total_episodes=20, verbose=1)
+        log_data = agent.learn(total_episodes=50, verbose=verbose)
         
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
@@ -76,9 +74,11 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
     
     # Save the trained model
     if model == "poly":
-        model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_{degree}_hill_climb.zip")
+        model_path = os.path.join(MODELS_DIR, f"{run_name}.zip")
+    elif algorithm == "ppo":
+        model_path = os.path.join(MODELS_DIR, f"{run_name}.zip")
     else:
-        model_path = os.path.join(MODELS_DIR, f"{algorithm}_{model}_hill_climb.zip")
+        model_path = os.path.join(MODELS_DIR, f"{run_name}.zip")
 
     agent.save(model_path)
 
@@ -147,13 +147,14 @@ if __name__ == '__main__':
     parser.add_argument("algorithm", choices=["ppo", "dqn", "sarsa"], help="Algorithm to use.")
     parser.add_argument("--model", choices=["linear", "nn", "poly"], default="nn", help="Model type for SARSA (default: nn).")
     parser.add_argument("--degree", type=int, default=3, help="Degree for polynomial model (default: 3).")
+    parser.add_argument("--buffer_size", type=int, default=2048, help="Buffer size for the PPO algorithm (default: 2048).")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for the run.")
     parser.add_argument("-v", "--verbose", type=int, default=0, help="Verbosity level: 0=none, 1=summary, 2=debug")
 
     args = parser.parse_args()
 
     if args.action == "train":
-        train(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose)
+        train(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, buffer_size=args.buffer_size, verbose=args.verbose)
     elif args.action == "visualize":
         visualize(args.algorithm, model=args.model, degree=args.degree, verbose=args.verbose, seed=args.seed)
 
