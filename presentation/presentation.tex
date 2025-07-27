@@ -124,6 +124,26 @@ subsubsectionstyle=show/shaded/hide]
 
 \section{Deep Q-Network}
 
+
+\begin{frame}{Characteristics of DQN}
+
+    DQN combines the principles of \textbf{deep neural networks} with \textbf{Q-learning}.
+    \vspace{1cm}
+    \begin{itemize}
+        \item \textbf{Off-policy:} learning from actions taken by different policies.
+        \vspace{0.5cm}
+        \item \textbf{Offline:} it collects a batch of experiences.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{DQN Training}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{images/experience_replay_buffer.png}
+    \end{figure}
+    \[L(\theta) = \left( \underbrace{r + \gamma \max_{a'} Q(s', a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
+\end{frame}
+
 \begin{frame}{DQN Algorithm}
     \begin{figure}
         \centering
