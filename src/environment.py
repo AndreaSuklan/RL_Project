@@ -29,7 +29,7 @@ COIN_COLOR = (255, 215, 0)
 REWARD_DISTANCE = 5.0
 REWARD_COIN = 50.0
 REWARD_AIR_TIME = 5
-PENALTY_COLLISION = -200.0
+PENALTY_COLLISION = -50.0
 PENALTY_TIME = -0.1
 
 
@@ -209,7 +209,10 @@ class HillClimbEnv(gym.Env):
                     shape=b2CircleShape(radius=0.3),
                 )
             )
-            coin.userData = f"coin_{self.coin_id_counter}"
+            coin.userData = {
+                "id": f"coin_{self.coin_id_counter}",
+                "collected": False
+            }
             self.coin_id_counter += 1
             self.coins.append(coin)
 
@@ -313,7 +316,7 @@ class HillClimbEnv(gym.Env):
         
         # Coin Reward
         if self.enable_coins and self.coins_to_remove:            # Create a set of user data strings of coins to be removed
-            unique_coins_to_remove = set(self.coins_to_remove)
+            unique_coins_to_remove = {frozenset(coin.items()) for coin in self.coins_to_remove}
             self.coins_collected += len(unique_coins_to_remove)
 
             # Create a list to hold the coin bodies we find
@@ -321,14 +324,18 @@ class HillClimbEnv(gym.Env):
             
             # Iterate through a copy of the master coin list to find the bodies
             for coin in list(self.coins):
-                if coin.userData in unique_coins_to_remove:
+                coin_froz = frozenset(coin.userData.items())
+                if coin_froz in unique_coins_to_remove:
                     coins_found_for_removal.append(coin)
 
             # Process the found bodies
             for coin in coins_found_for_removal:
-                reward += REWARD_COIN
-                if coin in self.coins:
-                    self.bodies_to_destroy.append(coin)
+                if coin.userData["collected"]:
+                    continue
+                else:
+                    reward += REWARD_COIN
+                    if coin in self.coins:
+                        self.bodies_to_destroy.append(coin)
 
             self.coins_to_remove.clear()
         
@@ -381,13 +388,13 @@ class HillClimbEnv(gym.Env):
 
         # --- Safely destroy bodies from the PREVIOUS step ---
         for body in self.bodies_to_destroy:
-            if body.active:
+            if body.active and body not in self.coins:
                 # First, destroy the physics body
-                self.b2World.DestroyBody(body)
-                
+                self.b2World.DestroyBody(body)  
+            else:
                 # Then, remove it from the tracking list
                 if body in self.coins:
-                    self.coins.remove(body)
+                    body.userData["collected"] = True
         self.bodies_to_destroy.clear()
 
         # --- Update the air time counter ---
@@ -444,7 +451,10 @@ class HillClimbEnv(gym.Env):
                         shape=b2CircleShape(radius=0.3),
                     )
                 )
-                coin.userData = f"coin_{self.coin_id_counter}"
+                coin.userData = {
+                    "id" : f"coin_{self.coin_id_counter}",
+                    "collected": False
+                }
                 self.coin_id_counter += 1
                 self.coins.append(coin)
 
@@ -529,6 +539,8 @@ class HillClimbEnv(gym.Env):
             if self.coins:
                 min_dist_sq = float('inf')
                 for coin in self.coins:
+                    if coin.userData["collected"]:
+                        continue
                     dist_sq = (pos - coin.position).lengthSquared
                     if dist_sq < min_dist_sq:
                         min_dist_sq = dist_sq
@@ -635,7 +647,10 @@ class HillClimbEnv(gym.Env):
         for coin in self.coins:
             pos = (coin.position * SCALE)
             pos = (pos[0] - scroll, VIEWPORT_H - pos[1])
-            pygame.draw.circle(self.screen, COIN_COLOR, pos, 0.3 * SCALE)
+            if coin.userData["collected"]:
+                pygame.draw.circle(self.screen, (0,0,0), pos, 0.3 * SCALE)
+            else:
+                pygame.draw.circle(self.screen, COIN_COLOR, pos, 0.3 * SCALE)
 
         # --- Draw Car and Driver ---
         self._draw_car_and_driver(scroll)
