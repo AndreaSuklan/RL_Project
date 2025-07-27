@@ -154,11 +154,28 @@ subsubsectionstyle=show/shaded/hide]
 
 \section{Expected SARSA}
 
-\begin{frame}{Exprected SARSA Algorithm}
-    \begin{figure}
-        \centering
-        %\includegraphics[width=\linewidth]{images/ESARSA_diagram.png}
-    \end{figure}
+\begin{frame}{Characteristics of Expected SARSA}
+    Expected SARSA combines the principles of statistical expectation with the on-policy learning algorithm SARSA.
+    $$(s, a, r, s', a')$$
+    \begin{itemize}
+        \item \textbf{On-policy:} the update is based on the expected value according to the policy being followed.
+        \vspace{0.5cm}
+        \item \textbf{Online:} An update after each single step.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{From SARSA to Expected SARSA}
+    \begin{itemize}
+        \item \textbf{SARSA}
+        $$Q(s, a) \leftarrow Q(s, a) + \alpha \left[ r + \gamma Q(s', a') - Q(s, a) \right]$$
+        \item \textbf{Expected SARSA}
+        $$Q(s, a) \leftarrow Q(s, a) + \alpha \left[ r + \gamma \mathbb{E}[Q(s', a')] - Q(s, a) \right]$$
+        $$\underbrace{\mathbb{E}[Q(s', a')]}_{\text{Expected value over all possible next actions}} = \sum_{a' \in \mathcal{A}} \pi(a'|s') Q(s', a')$$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Loss}
+$$L(\theta) = \left( \underbrace{\left( r + \gamma \sum_{a' \in \mathcal{A}} \pi(a'|s') Q(s', a'; \theta^-) \right)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2$$
 \end{frame}
 
 
