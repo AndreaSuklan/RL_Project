@@ -115,7 +115,7 @@ class DQN(RlAlgorithm):
         episode_loss = []
         episode_reward = 0
 
-        pbar = tqdm(total=total_episodes, desc="Training DQN", max_steps=2000)
+        pbar = tqdm(total=total_episodes, desc="Training DQN")
 
         episode_steps = 0
 
@@ -138,7 +138,7 @@ class DQN(RlAlgorithm):
             
             episode_reward += reward
 
-            if done or current_timesteps >= 2000:
+            if done or episode_steps >= 2000:
                 episode_num += 1
                 episode_steps = 0
 
