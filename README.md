@@ -97,3 +97,21 @@ python src/main.py visualize sarsa --model poly --degree 2
 - **Models**: Trained agent models are saved as `.zip` files in the `/models` directory.
 
 - **Logs**: Training data, such as rewards and episode lengths, are saved as `.csv` files in the `/logs` directory, allowing for performance analysis and plotting.
+
+## Replicating the results
+The repo comes with a handy script to replicate all the experiments that were done on orfeo.
+The script submits all experiments as a series of SLURM job arrays with different models and seeds, collecting all relevant data for plotting in the logs/ directory, and all the trained models with the different seeds in the models/ directory. All the hyperparameters and training modes are specified in the `rl_params.csv` file, and parsed in the `run.sh` file. This setup is easily extendable to other hyperparameters for further tuning. After adding the, as CLI arguments to `src/main.py`, one just needs to add the specific column to `rl_grid.csv` and a parse line + variable in run.sh.
+
+To run the script, just execute the following command:
+```
+chmod +x ./submit.sh #in case the file is not executable yet
+./submit.sh
+``` 
+In case your `AssocMaxSubmitJobLimit` in Orfeo or other clusters is too low, the script automatically loops until it can submit all the jobs in the queue, retrying every 3 minutes.
+In order to have this process running independently from the state of your machine, it is recommended to use `tmux`.
+```
+tmux
+chmod +x ./submit.sh #in case the file is not executable yet
+./submit.sh
+``` 
+Then hit `Ctrl-B D` to detach the session. 
