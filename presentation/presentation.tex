@@ -69,24 +69,11 @@ subsubsectionstyle=show/shaded/hide]
     \begin{frame}{Markov Decision Process}
 
     A MDP is a \textbf{stochastic model for sequential decision making} defined by a tuple: $$(\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$$.
-        
-    \end{frame}
 
-    \begin{frame}{State Space ($\mathcal{S}$)}
-        \begin{figure}
+    \begin{figure}
             \centering
-            \includegraphics[width=0.8\linewidth]{images/state_space.jpg}
-        \end{figure}
-    \end{frame}
-
-    \begin{frame}{Action Space ($\mathcal{A}$)}
-        \begin{figure}
-            \centering
-            \includegraphics[width=0.8\linewidth]{images/action_space.jpg}
-        \end{figure}
-    \end{frame}
-
-    \begin{frame}{Transition Dynamics ($\mathcal{P}$)}
+            \includegraphics[width=0.65\linewidth]{presentation/images/md.png}
+    \end{figure}
         
     \end{frame}
 
@@ -106,12 +93,41 @@ subsubsectionstyle=show/shaded/hide]
         \end{tabular}
     \end{frame}
 
-    \begin{frame}{Discount Factor ($\gamma$)}
+    \begin{frame}{Policy ($\pi$) and Discount Factor ($\gamma$)}
+     The agent's goal is to learn an optimal \textbf{policy ($\pi^*$)}.
+    
+    \begin{itemize}
+        \item In this project, the policy is approximated by a \textbf{deep neural network} due to the high-dimensional, continuous state space.
+    \end{itemize}
+        
+    Future rewards are weighted by the \textbf{discount factor ($\gamma$)}.
+    
+    \begin{itemize}
+        \item It balances the importance of immediate versus long-term rewards.
+        \item We chose a high value of \textbf{$\gamma = 0.99$} to create a "far-sighted" agent and encourages long-term returns.
+    \end{itemize}
         
     \end{frame}
 
-    \begin{frame}{policy ($\pi$)}
-        
+    \begin{frame}{State Space ($\mathcal{S}$)}
+        \begin{itemize}
+            \item The agent has perfect knowledge of the state, leading it to a \textbf{perfect observability} scenario.
+        \end{itemize}
+    
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{presentation/images/states.jpg}
+        \end{figure}
+    \end{frame}
+
+    \begin{frame}{Action Space ($\mathcal{A}$)}
+        \begin{itemize}
+            \item The agent does \textbf{not} have prior knowledge of this model, this puts it in a \textbf{model-free} context.
+        \end{itemize}
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{images/action_space.jpg}
+        \end{figure}
     \end{frame}
 
     \begin{frame}{Problem Classification}
@@ -120,7 +136,6 @@ subsubsectionstyle=show/shaded/hide]
             \includegraphics[width=0.8\linewidth]{images/knowledge_vs_observability.png}
         \end{figure}
     \end{frame}
-
 
 \section{Deep Q-Network}
 
