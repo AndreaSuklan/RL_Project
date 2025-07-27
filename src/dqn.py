@@ -21,7 +21,7 @@ class DQN(RlAlgorithm):
         buffer_size: Maximum size of the replay buffer.
         batch_size: Number of samples to draw from the replay buffer for training.
     """
-    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, buffer_size=10000, batch_size=64, model="nn", degree=3, verbose=0):
+    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, buffer_size=10000, batch_size=64, model="nn", degree=3, verbose=0, epsilon_decay=0.995):
         self.env = env
         self.gamma = gamma
         self.lr = lr
@@ -148,6 +148,9 @@ class DQN(RlAlgorithm):
                 episode_loss = []
                 episode_reward = 0
                 state, _ = self.env.reset()
+
+                # Decay epsilon
+                self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
         pbar.close()
         return log_data
