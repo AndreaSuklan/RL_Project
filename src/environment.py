@@ -86,9 +86,10 @@ class MyContactListener(b2ContactListener):
         if not contact.fixtureA.body.active or not contact.fixtureB.body.active:
             return
 
-        dataA = contact.fixtureA.body.userData
-        dataB = contact.fixtureB.body.userData
-        
+        # Safely get userData by casting it to a string
+        dataA = str(contact.fixtureA.body.userData)
+        dataB = str(contact.fixtureB.body.userData)
+
         # --- Air-time Detection ---
         if dataA == "terrain" and dataB in self.env.ground_contacts:
             self.env.ground_contacts.remove(dataB)
