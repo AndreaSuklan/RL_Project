@@ -1,4 +1,3 @@
-% !TEX root = presentation/presentation.tex
 \documentclass[serif]{beamer}  % for 4:3 ratio
 \usepackage[T1]{fontenc} 
 \usepackage{hyperref}
@@ -64,9 +63,64 @@ subsubsectionstyle=show/shaded/hide]
 \end{frame}
 
 
-\section{Introduction}
 
-\section{Environment}
+\section{Problem Definition}
+
+    \begin{frame}{Markov Decision Process}
+
+    A MDP is a \textbf{stochastic model for sequential decision making} defined by a tuple: $$(\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$$.
+        
+    \end{frame}
+
+    \begin{frame}{State Space ($\mathcal{S}$)}
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{images/state_space.jpg}
+        \end{figure}
+    \end{frame}
+
+    \begin{frame}{Action Space ($\mathcal{A}$)}
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{images/action_space.jpg}
+        \end{figure}
+    \end{frame}
+
+    \begin{frame}{Transition Dynamics ($\mathcal{P}$)}
+        
+    \end{frame}
+
+    \begin{frame}{Reward Function ($\mathcal{R}$)}
+        \centering
+        \renewcommand{\arraystretch}{1.5}
+        \begin{tabular}{l r}
+            \toprule
+            \textbf{Event} & \textbf{Value} \\
+            \midrule
+            Forward Progress (per meter) & +5.0 \\
+            Coin Collection & +20.0 \\
+            Air Time (per second) & +5.0 \\
+            Time Penalty (per step) & -0.1 \\
+            Crash (Episode End) & -50.0 \\
+            \bottomrule
+        \end{tabular}
+    \end{frame}
+
+    \begin{frame}{Discount Factor ($\gamma$)}
+        
+    \end{frame}
+
+    \begin{frame}{policy ($\pi$)}
+        
+    \end{frame}
+
+    \begin{frame}{Problem Classification}
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{images/knowledge_vs_observability.png}
+        \end{figure}
+    \end{frame}
+
 
 \section{Deep Q-Network}
 
@@ -83,7 +137,7 @@ subsubsectionstyle=show/shaded/hide]
 \begin{frame}{Exprected SARSA Algorithm}
     \begin{figure}
         \centering
-        \includegraphics[width=\linewidth]{images/ESARSA_diagram.png}
+        %\includegraphics[width=\linewidth]{images/ESARSA_diagram.png}
     \end{figure}
 \end{frame}
 
