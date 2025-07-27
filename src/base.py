@@ -5,6 +5,21 @@ import pickle
 import torch
 import tempfile
 from abc import ABC, abstractmethod
+import numpy as np
+import random
+
+def set_seed(seed, env=None):
+    if seed is None: return
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    if env is not None:
+        env.action_space.seed(seed)
 
 
 class RlAlgorithm(ABC):

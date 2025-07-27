@@ -9,6 +9,7 @@ import zipfile
 import pickle
 import os
 from tqdm import tqdm
+from base import set_seed
 
 from approximations import Linear, Polynomial
 from networks import MLP_Small, SimpleNN
@@ -16,7 +17,7 @@ from buffers import ReplayBuffer
 
 class SARSA:
     """SARSA agent using a neural network for Q-value approximation (no replay buffer, online updates, decaying epsilon)."""
-    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, min_epsilon=0.01, epsilon_decay=0.995, model="nn", degree=3):
+    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, min_epsilon=0.01, epsilon_decay=0.995, model="nn", degree=3, seed =None):
         self.env = env
         self.gamma = gamma
         self.lr = lr
@@ -27,9 +28,10 @@ class SARSA:
         self.action_size = env.action_space.n
         self.model = model
         self.degree = degree
-
+        self.seed = seed
+        set_seed(seed)
         if isinstance(model, str):
-            self.policy = self.__class__.create_model(env, model, degree)
+            self.policy = self.__class__.create_model(env, model, self.degree)
         else:
             self.policy = model
         
@@ -43,7 +45,7 @@ class SARSA:
         elif model == "nn":
             model = MLP_Small(env.observation_space.shape[0], env.action_space.n)
         elif model == "poly":
-            model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree=degree)
+            model = Polynomial(env.observation_space.shape[0], env.action_space.n, degree = degree)
         else:
             raise ValueError(f"Unrecognized model {model}")
         return model
@@ -80,7 +82,7 @@ class SARSA:
 
         return loss.item()
 
-    def learn(self, total_timesteps = 200000, max_steps_per_episode=2000, verbose=0):
+    def learn(self, total_episodes = 200000, max_steps_per_episode=2000, verbose=0):
         """Train the SARSA agent.
         Args:
             total_episodes: Total number of episodes to train the agent.
@@ -92,7 +94,7 @@ class SARSA:
         self.performance_traj = []
         episode = 0
 
-        while current_timesteps < total_timesteps:
+        while episode < total_episodes:
             state, _ = self.env.reset()
             episode_reward = 0
             episode_losses = []
@@ -118,13 +120,14 @@ class SARSA:
             self.performance_traj.append(episode_reward)
 
             mean_loss = np.mean(episode_losses) if episode_losses else None
+            episode += 1
             log_data.append({
                 "timestep": current_timesteps,
+                "episode" : episode,
                 "reward": episode_reward,
                 "value_loss": mean_loss
                 })
-            episode += 1
-
+            
             if verbose > 0 and episode % 10 == 0:
                 mean_reward = np.mean(self.performance_traj[-10:])
                 print_loss = mean_loss if mean_loss is not None else float('nan')
@@ -133,13 +136,7 @@ class SARSA:
         return log_data
 
     def predict(self, observation, deterministic=True):
-        """Predict the action based on the current observation.
-        Args:
-            observation: The current state of the environment.
-            deterministic: If True, select the action with the highest Q-value.
-        Returns:
-            The predicted action.
-        """
+
         state_tensor = torch.tensor(observation, dtype=torch.float32)
         with torch.no_grad():
             q_values = self.policy(state_tensor)
@@ -150,7 +147,6 @@ class SARSA:
                 return np.random.choice(self.action_size, p=probs)
 
     def save(self, path="sarsa_model.zip"):
-        """Save the SARSA model to a zip file."""
         tmp_dir = "tmp_sarsa_save"
         os.makedirs(tmp_dir, exist_ok=True)
 
@@ -177,8 +173,7 @@ class SARSA:
         os.rmdir(tmp_dir)
 
     @classmethod
-    def load(cls, path, env):
-        """Load a SARSA model from a zip file."""
+    def load(cls, path, env, model="nn", degree=3):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp_dir:
             with zipfile.ZipFile(path, 'r') as zipf:

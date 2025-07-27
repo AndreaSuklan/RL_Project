@@ -8,6 +8,7 @@ from buffers import ReplayBuffer
 from tqdm import tqdm
 from networks import MLP_Small
 from approximations import Linear, Polynomial
+from base import set_seed
 
 class DQN(RlAlgorithm):
     """Deep Q-Network (DQN) agent.
@@ -21,7 +22,7 @@ class DQN(RlAlgorithm):
         buffer_size: Maximum size of the replay buffer.
         batch_size: Number of samples to draw from the replay buffer for training.
     """
-    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, buffer_size=10000, batch_size=64, model="nn", degree=3, verbose=0):
+    def __init__(self, env, gamma=0.99, lr=0.001, epsilon=0.1, buffer_size=10000, batch_size=64, model="nn", degree=3, verbose=0, epsilon_decay=0.995, min_epsilon=0.01, seed=None):
         self.env = env
         self.gamma = gamma
         self.lr = lr
@@ -29,6 +30,10 @@ class DQN(RlAlgorithm):
         self.batch_size = batch_size
         self.model = model
         self.degree = degree
+        self.epsilon_decay = epsilon_decay
+        self.min_epsilon = min_epsilon
+        self.seed = seed
+        set_seed(seed)
 
         if isinstance(model, str):
             self.model = self.__class__.create_model(env, model, degree)
@@ -100,7 +105,7 @@ class DQN(RlAlgorithm):
 
         return loss.item(), None
 
-    def learn(self, total_timesteps, verbose=0):
+    def learn(self, total_episodes, verbose=0):
         self.verbose = verbose  # set the verbosity level
         log_data = []
 
@@ -110,9 +115,11 @@ class DQN(RlAlgorithm):
         episode_loss = []
         episode_reward = 0
 
-        pbar = tqdm(total=total_timesteps, desc="Training DQN")
+        pbar = tqdm(total=total_episodes, desc="Training DQN")
 
-        while current_timesteps < total_timesteps:
+        episode_steps = 0
+
+        while episode_num < total_episodes:
             action = self.select_action(state)
             next_state, reward, terminated, truncated, _ = self.env.step(action)
             done = terminated or truncated
@@ -122,6 +129,7 @@ class DQN(RlAlgorithm):
 
             self.performance_traj.append(reward)
             current_timesteps += 1
+            episode_steps += 1
             pbar.update(1)
 
             loss, _ = self.train_step()
@@ -130,8 +138,9 @@ class DQN(RlAlgorithm):
             
             episode_reward += reward
 
-            if done:
+            if done or episode_steps >= 2000:
                 episode_num += 1
+                episode_steps = 0
 
                 mean_reward = np.mean(self.performance_traj[-10:]) if self.performance_traj else 0
 
@@ -141,6 +150,7 @@ class DQN(RlAlgorithm):
 
                 log_data.append({
                     "timestep": current_timesteps,
+                    "episode": episode_num,
                     "reward": episode_reward,
                     "value_loss": np.mean(episode_loss)
                 })
@@ -148,6 +158,9 @@ class DQN(RlAlgorithm):
                 episode_loss = []
                 episode_reward = 0
                 state, _ = self.env.reset()
+
+                # Decay epsilon
+                self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
         pbar.close()
         return log_data

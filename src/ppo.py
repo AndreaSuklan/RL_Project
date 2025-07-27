@@ -5,14 +5,18 @@ from buffers import RolloutBuffer
 from base import RlAlgorithm
 from tqdm import tqdm
 from networks import ActorCritic
+from base import set_seed
 
 class PPO(RlAlgorithm):
     def __init__(self, env, model, buffer_size=1, gamma=0.99, gae_lambda=0.95,
-                 lr=3e-4, clip_epsilon=0.2, n_epochs=10, batch_size=64):
+                 lr=3e-4, clip_epsilon=0.2, n_epochs=10, batch_size=64, seed=None):
         self.gae_lambda = gae_lambda
         self.clip_epsilon = clip_epsilon
         self.n_epochs = n_epochs
         self.batch_size = batch_size
+        self.seed = seed
+        set_seed(self.seed)
+        
         if isinstance(model, str):
             self.model = self.__class__.create_model(env, model)
         else:
@@ -90,16 +94,17 @@ class PPO(RlAlgorithm):
 
         return policy_losses, value_losses, entropy_losses
 
-    def learn(self, total_timesteps, verbose=0):
+    def learn(self, total_episodes, verbose=0):
         state, _ = self.env.reset()
         current_timesteps = 0
         episode_rewards = []
+        episode_num = 0
         current_reward = 0
         log_data = [] 
 
-        pbar = tqdm(total=total_timesteps, desc="Training PPO")
+        pbar = tqdm(total=total_episodes, desc="Training PPO")
 
-        while current_timesteps < total_timesteps:
+        while episode_num < total_episodes:
             for _ in range(self.buffer_size):
                 action, log_prob, value = self.select_action(state)
                 next_state, reward, done, truncated, _ = self.env.step(action)
@@ -107,13 +112,16 @@ class PPO(RlAlgorithm):
                 state = next_state
                 current_reward += reward
                 current_timesteps += 1
-                pbar.update(1)
 
                 if done or truncated:
-                    episode_rewards.append(current_reward)
-                    current_reward = 0
+                    
                     state, _ = self.env.reset()
 
+            episode_num += 1
+            pbar.update(1)
+            episode_rewards.append(current_reward)
+            current_reward = 0
+            
             with torch.no_grad():
                 last_state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
                 _, last_value = self.model(last_state_tensor)
@@ -131,6 +139,7 @@ class PPO(RlAlgorithm):
 
             log_data.append({
             "timestep": current_timesteps,
+            "episode": episode_num,
             "mean_reward": mean_reward,
             "policy_loss": mean_policy_loss,
             "value_loss": mean_value_loss,
@@ -138,7 +147,7 @@ class PPO(RlAlgorithm):
             })
 
             # Print to console
-            print(f"\nTimestep: {current_timesteps}/{total_timesteps}")
+            print(f"\nEpisode: {episode_num}/{total_episodes}")
             if mean_reward is not None:
                 print(f"Mean Reward (last {len(episode_rewards)} episodes): {mean_reward:.2f}")
             print(f"Mean Policy Loss: {mean_policy_loss:.4f}")

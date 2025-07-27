@@ -61,22 +61,98 @@ subsectionstyle=show/shaded/hide,
 subsubsectionstyle=show/shaded/hide]
 \end{frame}
 
-\section{Introduction}
+\section{Problem Definition}
 
-\section{Environment}
+    \begin{frame}{Markov Decision Process}
+
+    A MDP is a \textbf{stochastic model for sequential decision making} defined by a tuple: $$(\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$$.
+
+    \begin{figure}
+            \centering
+            \includegraphics[width=0.65\linewidth]{presentation/images/md.png}
+    \end{figure}
+        
+    \end{frame}
+
+    \begin{frame}{Reward Function ($\mathcal{R}$)}
+        \centering
+        \renewcommand{\arraystretch}{1.5}
+        \begin{tabular}{l r}
+            \toprule
+            \textbf{Event} & \textbf{Value} \\
+            \midrule
+            Forward Progress (per meter) & +5.0 \\
+            Coin Collection & +20.0 \\
+            Air Time (per second) & +5.0 \\
+            Time Penalty (per step) & -0.1 \\
+            Crash (Episode End) & -50.0 \\
+            \bottomrule
+        \end{tabular}
+    \end{frame}
+
+    \begin{frame}{Policy ($\pi$) and Discount Factor ($\gamma$)}
+     The agent's goal is to learn an optimal \textbf{policy ($\pi^*$)}.
+    
+    \begin{itemize}
+        \item In this project, the policy is approximated by a \textbf{deep neural network} due to the high-dimensional, continuous state space.
+    \end{itemize}
+        
+    Future rewards are weighted by the \textbf{discount factor ($\gamma$)}.
+    
+    \begin{itemize}
+        \item It balances the importance of immediate versus long-term rewards.
+        \item We chose a high value of \textbf{$\gamma = 0.99$} to create a "far-sighted" agent and encourages long-term returns.
+    \end{itemize}
+        
+    \end{frame}
+
+    \begin{frame}{State Space ($\mathcal{S}$)}
+        \begin{itemize}
+            \item The agent has perfect knowledge of the state, leading it to a \textbf{perfect observability} scenario.
+        \end{itemize}
+    
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{presentation/images/states.jpg}
+        \end{figure}
+    \end{frame}
+
+    \begin{frame}{Action Space ($\mathcal{A}$)}
+        \begin{itemize}
+            \item The agent does \textbf{not} have prior knowledge of this model, this puts it in a \textbf{model-free} context.
+        \end{itemize}
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{images/action_space.jpg}
+        \end{figure}
+    \end{frame}
+
+    \begin{frame}{Problem Classification}
+        \begin{figure}
+            \centering
+            \includegraphics[width=0.8\linewidth]{images/knowledge_vs_observability.png}
+        \end{figure}
+    \end{frame}
 
 \section{Deep Q-Network}
 
-\begin{frame}{Based on Q-Learning}
+\begin{frame}{Characteristics of DQN}
+
+    DQN combines the principles of \textbf{deep neural networks} with \textbf{Q-learning}.
+    \vspace{1cm}
+    \begin{itemize}
+        \item \textbf{Off-policy:} learning from actions taken by different policies.
+        \vspace{0.5cm}
+        \item \textbf{Offline:} it collects a batch of experiences.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{DQN Training}
     \begin{figure}
         \centering
-        \includegraphics[width=\linewidth]{images/Q_LEARNING_ALGO.png}
+        \includegraphics[width=0.8\linewidth]{images/experience_replay_buffer.png}
     \end{figure}
-    \begin{itemize}
-        \item Model-Free (separate Prediction and Control) 
-        \item Off-Policy
-        \item $\epsilon$-greedy policy (with decay)
-    \end{itemize}
+    \[L(\theta) = \left( \underbrace{r + \gamma \max_{a'} Q(s', a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
 \end{frame}
 
 \begin{frame}{DQN Algorithm}
@@ -99,11 +175,28 @@ subsubsectionstyle=show/shaded/hide]
 
 \section{Expected SARSA}
 
-\begin{frame}{Expected SARSA Algorithm}
-    \begin{figure}
-        \centering
-        \includegraphics[width=\linewidth]{images/ESARSA_diagram.png}
-    \end{figure}
+\begin{frame}{Characteristics of Expected SARSA}
+    Expected SARSA combines the principles of statistical expectation with the on-policy learning algorithm SARSA.
+    $$(s, a, r, s', a')$$
+    \begin{itemize}
+        \item \textbf{On-policy:} the update is based on the expected value according to the policy being followed.
+        \vspace{0.5cm}
+        \item \textbf{Online:} An update after each single step.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{From SARSA to Expected SARSA}
+    \begin{itemize}
+        \item \textbf{SARSA}
+        $$Q(s, a) \leftarrow Q(s, a) + \alpha \left[ r + \gamma Q(s', a') - Q(s, a) \right]$$
+        \item \textbf{Expected SARSA}
+        $$Q(s, a) \leftarrow Q(s, a) + \alpha \left[ r + \gamma \mathbb{E}[Q(s', a')] - Q(s, a) \right]$$
+        $$\underbrace{\mathbb{E}[Q(s', a')]}_{\text{Expected value over all possible next actions}} = \sum_{a' \in \mathcal{A}} \pi(a'|s') Q(s', a')$$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Loss}
+$$L(\theta) = \left( \underbrace{\left( r + \gamma \sum_{a' \in \mathcal{A}} \pi(a'|s') Q(s', a'; \theta^-) \right)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2$$
 \end{frame}
 
 \section{Proximal Policy Optimization}
@@ -116,6 +209,52 @@ subsubsectionstyle=show/shaded/hide]
 \end{frame}
 
 \section{Results}
+
+\begin{frame}{DQN - Loss vs Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/DQN_rewardcurve.png}
+        \includegraphics[width=\linewidth]{images/DQN_valueloss_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{PPO - Loss vs Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/PPO_diagram.png}
+        \includegraphics[width=\linewidth]{images/PPO_diagram.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{PPO - Entropy}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/PPO_diagram.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{SARSA - Loss vs Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/PPO_diagram.png}
+        \includegraphics[width=\linewidth]{images/PPO_diagram.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{All vs All - Loss}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/all_valueloss_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{All vs All - Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{images/all_rewardcurve.png}
+    \end{figure}
+\end{frame}
+
 
 \begin{frame}
 \centering
