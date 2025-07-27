@@ -11,7 +11,7 @@ LOGS_DIR = "./logs"
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
-def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
+def train(algorithm, seed=None, model = "nn", degree=3, verbose=0, total_episodes=100):
     """
     Trains a new agent by calling the appropriate creation function.
     """
@@ -35,7 +35,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
         agent = PPO(
             env,
             model=model,
-            buffer_size=2048, 
+            buffer_size=2000, 
             gamma=0.99, 
             gae_lambda=0.95, 
             lr=3e-4, 
@@ -45,7 +45,7 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             seed=seed
         )
 
-        log_data = agent.learn(total_episodes=10, verbose=verbose)
+        log_data = agent.learn(total_episodes=total_episodes, verbose=verbose)
         
     elif algorithm == 'dqn':
         agent = DQN(
@@ -56,18 +56,21 @@ def train(algorithm, seed=None, model = "nn", degree=3, verbose=0):
             lr=0.001, 
             epsilon=0.1, 
             batch_size=64,
+            degree=degree,
             seed=seed)
-        log_data = agent.learn(total_episodes=20, verbose=1)
+        log_data = agent.learn(total_episodes=total_episodes, verbose=1)
 
     elif algorithm == 'sarsa':
         agent = SARSA(
-            env, 
+            env,
+            model=model,
             gamma=0.99, 
             lr=0.001, 
             epsilon=0.1,
+            degree=degree,
             seed=seed
             )
-        log_data = agent.learn(total_episodes=20, verbose=1)
+        log_data = agent.learn(total_episodes=total_episodes, verbose=1)
         
     else:
         print(f"Error: Unknown algorithm '{algorithm}'")
@@ -149,11 +152,12 @@ if __name__ == '__main__':
     parser.add_argument("--degree", type=int, default=3, help="Degree for polynomial model (default: 3).")
     parser.add_argument("-s", "--seed", type=int, default=0, help="Random seed for the run.")
     parser.add_argument("-v", "--verbose", type=int, default=0, help="Verbosity level: 0=none, 1=summary, 2=debug")
+    parser.add_argument("-e","--episodes", type=int, default=100, help="Total episodes for training (default: 100).")
 
     args = parser.parse_args()
 
     if args.action == "train":
-        train(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose)
+        train(args.algorithm, seed=args.seed, model=args.model, degree=args.degree, verbose=args.verbose, total_episodes=args.episodes)
     elif args.action == "visualize":
         visualize(args.algorithm, model=args.model, degree=args.degree, verbose=args.verbose, seed=args.seed)
 

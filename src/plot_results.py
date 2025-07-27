@@ -12,14 +12,14 @@ ROLLING_WINDOW = 25
 def plot_learning_curve(df, title, filename):
     """Plots the smoothed reward curve for all algorithms."""
     plt.figure(figsize=(12, 7))
-    df['smoothed_reward'] = df.groupby(['algorithm', "model"])['reward'].transform(
-        lambda x: x.rolling(ROLLING_WINDOW, min_periods=1).mean()
+    df["smoothed_reward"] = df.groupby(['algorithm', 'model'])['reward'].transform(
+        lambda x: x.rolling(window=ROLLING_WINDOW, min_periods=1).mean()
     )
     
-    sns.lineplot(data=df, x='timestep', y='smoothed_reward', hue='algorithm', style="model",  errorbar='sd', legend=True)
+    sns.lineplot(data=df, x='episode', y='smoothed_reward', hue='algorithm', style="model",  errorbar='sd', legend=True)
     
     plt.title(title, fontsize=16)
-    plt.xlabel('Timesteps', fontsize=12)
+    plt.xlabel('Episodes', fontsize=12)
     plt.ylabel(f'Mean Episode Reward (Rolling Avg. of {ROLLING_WINDOW})', fontsize=12)
     plt.grid(True, which='both', linestyle='--', linewidth=0.5)
     plt.legend(title='Algorithm and Model')
@@ -32,11 +32,11 @@ def plot_metric(df, metric_col, title, filename, y_log_scale=False):
     """Plots a generic metric curve (e.g., loss, entropy) for all algorithms."""
     plt.figure(figsize=(12, 7))
     metric_df = df.dropna(subset=[metric_col])
-    df[metric_col] = df.groupby(['algorithm', "model"])[metric_col].transform(
-        lambda x: x.rolling(ROLLING_WINDOW, min_periods=1).mean()
+    df[metric_col] = df.groupby(['algorithm', 'model'])[metric_col].transform(
+        lambda x: x.rolling(window=ROLLING_WINDOW, min_periods=1).mean()
     )
 
-    sns.lineplot(data=metric_df, x='timestep', y=metric_col, hue='algorithm', style = "model", errorbar='sd', legend=True)
+    sns.lineplot(data=metric_df, x='episode', y=metric_col, hue='algorithm', style = "model", errorbar='sd', legend=True)
     
     plt.title(title, fontsize=16)
     plt.xlabel('Timesteps', fontsize=12)
@@ -99,7 +99,7 @@ def main():
                 df['algorithm'] = parts[0].upper()
                 df['model'] = parts[1]
                 if len(parts) > 3:
-                    df["degree"] = int(parts[2])
+                    df["degree"] = None
                     df['seed'] = int(parts[3])
                 else:
                     df['seed'] = int(parts[2])
@@ -117,7 +117,7 @@ def main():
 
     # --- Generate All Plots (This section is unchanged) ---
     plot_learning_curve(full_df, "Learning Curves", "reward_curve.png")
-    plot_metric(full_df, 'value_loss', 'Value Loss over Time', 'value_loss_curve.png')
+    plot_metric(full_df, 'value_loss', 'Value Loss over Time', 'value_loss_curve.png', y_log_scale=True)
     
     ppo_df = full_df[full_df['algorithm'] == 'PPO']
     if not ppo_df.empty:
