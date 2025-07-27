@@ -8,7 +8,7 @@
 \usepackage{graphicx,listings,stackengine}
 \usepackage{UoWstyle}
 
-% Author/title info
+
 \author{
     Giovanni Billo
     \and  
@@ -94,7 +94,7 @@ subsubsectionstyle=show/shaded/hide]
      The agent's goal is to learn an optimal \textbf{policy ($\pi^*$)}.
     
     \begin{itemize}
-        \item In this project, the policy is approximated by a \textbf{deep neural network} due to the high-dimensional, continuous state space.
+        \item In this project, the policy is approximated by a \textbf{neural network} due to the high-dimensional, continuous state space.
     \end{itemize}
         
     Future rewards are weighted by the \textbf{discount factor ($\gamma$)}.
@@ -152,7 +152,7 @@ subsubsectionstyle=show/shaded/hide]
         \centering
         \includegraphics[width=0.8\linewidth]{images/experience_replay_buffer.png}
     \end{figure}
-    \[L(\theta) = \left( \underbrace{r + \gamma \max_{a'} Q(s', a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
+    \[L(\theta) = \left( \underbrace{r_{t+1} + \gamma \max_{a'} Q(s_{t+1}, a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
 \end{frame}
 
 \begin{frame}{DQN Algorithm}
@@ -264,8 +264,7 @@ $$L(\theta) = \left( \underbrace{\left( r + \gamma \sum_{a' \in \mathcal{A}} \pi
 {\Huge Thank you!}
 \end{frame}
 
-\bibliography{ref}
-\bibliographystyle{plain}
+
 
 \end{document}
 
