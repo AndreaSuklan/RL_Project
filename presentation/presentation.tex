@@ -4,6 +4,7 @@
 \usepackage{latexsym,amsmath,xcolor,multicol,booktabs,calligra}
 \usepackage{graphicx,pstricks,listings,stackengine}
 
+
 \author{
     Giovanni Billo
     \and  
@@ -72,7 +73,7 @@ subsubsectionstyle=show/shaded/hide]
 
     \begin{figure}
             \centering
-            \includegraphics[width=0.65\linewidth]{presentation/images/md.png}
+            \includegraphics[width=0.65\linewidth]{images/md.png}
     \end{figure}
         
     \end{frame}
@@ -116,7 +117,7 @@ subsubsectionstyle=show/shaded/hide]
     
         \begin{figure}
             \centering
-            \includegraphics[width=0.8\linewidth]{presentation/images/states.jpg}
+            \includegraphics[width=0.8\linewidth]{images/states.jpg}
         \end{figure}
     \end{frame}
 
@@ -156,7 +157,7 @@ subsubsectionstyle=show/shaded/hide]
         \centering
         \includegraphics[width=0.8\linewidth]{images/experience_replay_buffer.png}
     \end{figure}
-    \[L(\theta) = \left( \underbrace{r + \gamma \max_{a'} Q(s', a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
+    \[L(\theta) = \left( \underbrace{r_{t+1} + \gamma \max_{a'} Q(s_{t+1}, a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
 \end{frame}
 
 \begin{frame}{DQN Algorithm}
@@ -211,7 +212,6 @@ $$L(\theta) = \left( \underbrace{\left( r + \gamma \sum_{a' \in \mathcal{A}} \pi
 {\Huge Thank you!}
 \end{frame}
 
-\bibliography{ref}
-\bibliographystyle{plain}
+
 
 \end{document}
