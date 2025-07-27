@@ -1,7 +1,9 @@
-model,degree,verbosity,seed,run_mode,agent
-linear,3,1,42,train,dqn
-nn,3,1,42,train,dqn
-poly,2,1,42,train,dqn
-poly,2,1,42,train,sarsa
-linear,3,1,42,train,sarsa
-nn,3,1,42,train,sarsa
+model,degree,buffer,verbosity,seed,run_mode,agent
+nn,0,1,1,42,train,ppo
+nn,0,2048,1,42,train,ppo
+linear,3,0,1,42,train,dqn
+nn,3,0,1,42,train,dqn
+poly,2,0,1,42,train,dqn
+poly,2,0,1,42,train,sarsa
+linear,3,0,1,42,train,sarsa
+nn,3,0,1,42,train,sarsa
