@@ -34,7 +34,6 @@ def train(algorithm, seed=None, model="nn", degree=3, verbose=0, total_episodes=
             env,
             model=model,
             buffer_size=buffer_size,
-            degree=degree,
             gamma=0.99,
             gae_lambda=0.95,
             lr=3e-4,
@@ -113,7 +112,7 @@ def visualize(model_path, seed=None):
 
     # Use parsed info to load the correct model
     if algorithm == 'ppo':
-        m = PPO.create_model(env, model_type, degree=degree)
+        m = PPO.create_model(env, model_type)
         model = PPO.load(model_path, env=env, model=m)
     elif algorithm == 'dqn':
         m = DQN.create_model(env, model_type, degree=degree)
