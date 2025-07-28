@@ -1,8 +1,13 @@
 \documentclass[serif]{beamer}  % for 4:3 ratio
+
+% Encoding & packages
+\usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc} 
 \usepackage{hyperref}
 \usepackage{latexsym,amsmath,xcolor,multicol,booktabs,calligra}
-\usepackage{graphicx,pstricks,listings,stackengine}
+\usepackage{graphicx,listings,stackengine}
+\usepackage{UoWstyle}
+
 
 \author{
     Giovanni Billo
@@ -13,9 +18,8 @@
 }
 \title{Analysis of RL Algorithms for a Simulated Hill Climb Racing Agent}
 \date{\small July 28, 2025}
-\usepackage{UoWstyle}
 
-% defs
+% Custom commands and colors
 \def\cmd#1{\texttt{\color{red}\footnotesize $\backslash$#1}}
 \def\env#1{\texttt{\color{blue}\footnotesize #1}}
 \definecolor{deepblue}{rgb}{0,0,0.5}
@@ -23,10 +27,11 @@
 \definecolor{deepgreen}{rgb}{0,0.5,0}
 \definecolor{halfgray}{gray}{0.55}
 
+% Code listing setup
 \lstset{
     basicstyle=\ttfamily\tiny,
     keywordstyle=\bfseries\color{deepgreen},
-    emphstyle=\ttfamily\color{deepred},    % Custom highlighting style
+    emphstyle=\ttfamily\color{deepred},
     stringstyle=\color{deepblue},
     numbers=left,
     numberstyle=\tiny\color{halfgray},
@@ -34,23 +39,17 @@
     frame=shadowbox,
 }
 
-
 \begin{document}
-
 
 \begin{frame}
     \vfill
     \begin{center}
         \includegraphics[keepaspectratio, scale=0.15]{images/logo.jpg}
-        
         \vspace{1cm}
-        
         \begin{beamercolorbox}[wd=\textwidth,center,rounded=true]{title}
-            {\textbf{Analysis of RL Algorithms for \\ a Simulated Hill Climb Racing Agent}}
+            \textbf{Analysis of RL Algorithms for \\ a Simulated Hill Climb Racing Agent}
         \end{beamercolorbox}
-        
         \vspace{1cm}
-        
         {July 28, 2025}
     \end{center}
     \vfill
@@ -62,8 +61,6 @@ subsectionstyle=show/shaded/hide,
 subsubsectionstyle=show/shaded/hide]
 \end{frame}
 
-
-
 \section{Problem Definition}
 
     \begin{frame}{Markov Decision Process}
@@ -72,7 +69,7 @@ subsubsectionstyle=show/shaded/hide]
 
     \begin{figure}
             \centering
-            \includegraphics[width=0.65\linewidth]{presentation/images/md.png}
+            \includegraphics[width=0.65\linewidth]{images/md.png}
     \end{figure}
         
     \end{frame}
@@ -97,7 +94,7 @@ subsubsectionstyle=show/shaded/hide]
      The agent's goal is to learn an optimal \textbf{policy ($\pi^*$)}.
     
     \begin{itemize}
-        \item In this project, the policy is approximated by a \textbf{deep neural network} due to the high-dimensional, continuous state space.
+        \item In this project, the policy is approximated by a \textbf{neural network} due to the high-dimensional, continuous state space.
     \end{itemize}
         
     Future rewards are weighted by the \textbf{discount factor ($\gamma$)}.
@@ -116,7 +113,7 @@ subsubsectionstyle=show/shaded/hide]
     
         \begin{figure}
             \centering
-            \includegraphics[width=0.8\linewidth]{presentation/images/states.jpg}
+            \includegraphics[width=0.8\linewidth]{images/states.jpg}
         \end{figure}
     \end{frame}
 
@@ -139,7 +136,6 @@ subsubsectionstyle=show/shaded/hide]
 
 \section{Deep Q-Network}
 
-
 \begin{frame}{Characteristics of DQN}
 
     DQN combines the principles of \textbf{deep neural networks} with \textbf{Q-learning}.
@@ -156,7 +152,7 @@ subsubsectionstyle=show/shaded/hide]
         \centering
         \includegraphics[width=0.8\linewidth]{images/experience_replay_buffer.png}
     \end{figure}
-    \[L(\theta) = \left( \underbrace{r + \gamma \max_{a'} Q(s', a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
+    \[L(\theta) = \left( \underbrace{r_{t+1} + \gamma \max_{a'} Q(s_{t+1}, a'; \theta)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2\]
 \end{frame}
 
 \begin{frame}{DQN Algorithm}
@@ -166,6 +162,12 @@ subsubsectionstyle=show/shaded/hide]
     \end{figure}
 \end{frame}
 
+\begin{frame}{More specifically}
+    \textbf{Weight update in DQN}
+    $$
+    \mathbf{w} \leftarrow \mathbf{w} + \alpha \left[ R + \gamma \max_{A'} \hat{q}(S', A', \mathbf{w}^{-}) - \hat{q}(S, A, \mathbf{w}) \right] \nabla \hat{q}(S, A, \mathbf{w})
+    $$
+\end{frame}
 
 \section{Expected SARSA}
 
@@ -193,7 +195,6 @@ subsubsectionstyle=show/shaded/hide]
 $$L(\theta) = \left( \underbrace{\left( r + \gamma \sum_{a' \in \mathcal{A}} \pi(a'|s') Q(s', a'; \theta^-) \right)}_{\text{Target}} - \underbrace{Q(s, a; \theta)}_{\text{Prediction}} \right)^2$$
 \end{frame}
 
-
 \section{Proximal Policy Optimization}
 
 \begin{frame}{PPO Algorithm}
@@ -203,15 +204,63 @@ $$L(\theta) = \left( \underbrace{\left( r + \gamma \sum_{a' \in \mathcal{A}} \pi
     \end{figure}
 \end{frame}
 
-
 \section{Results}
+
+\begin{frame}{DQN - Loss vs Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.48\linewidth]{plots/dqn_value_loss_curve.png}
+        \hfill
+        \includegraphics[width=0.48\linewidth]{plots/dqn_reward_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{PPO - Loss vs Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.48\linewidth]{plots/ppo_value_loss_curve.png}
+        \hfill
+        \includegraphics[width=0.48\linewidth]{plots/ppo_reward_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{PPO - Entropy}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{../plots/ppo_entropy_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{SARSA - Loss vs Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.48\linewidth]{plots/sarsa_value_loss_curve.png}
+        \hfill
+        \includegraphics[width=0.48\linewidth]{plots/sarsa_reward_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{All vs All - Loss}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{../plots/all_value_loss_curve.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{All vs All - Reward}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{../plots/all_reward_curve.png}
+    \end{figure}
+\end{frame}
+
 
 \begin{frame}
 \centering
 {\Huge Thank you!}
 \end{frame}
 
-\bibliography{ref}
-\bibliographystyle{plain}
+
 
 \end{document}
+

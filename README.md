@@ -46,11 +46,14 @@ The project is controlled via the `main.py` script. You can either `train` a new
 | Argument | Shorthand | Description | Default Value |
 | :--- | :--- | :--- | :--- |
 | `action` | | Action to perform (`train` or `visualize`). | **Required** |
-| `algorithm` | | Algorithm to use (`ppo`, `dqn`, or `sarsa`). | **Required** |
-| `--model` | | Model type for DQN/SARSA (`nn`, `linear`, `poly`). | `nn` |
+| `algorithm`| | Algorithm to use for `train` (`ppo`, `dqn`, `sarsa`). | **Required for train** |
+| `--path` | | Path to the model `.zip` file for `visualize`. | **Required for visualize**|
+| `--model` | | Model type for the agent (`nn`, `linear`, `poly`). | `nn` |
 | `--degree` | | Degree for the polynomial model. | `3` |
+| `--buffer_size`| | Buffer size for the PPO algorithm. | `2048` |
+| `--episodes` | `-e` | Total episodes for training. | `100` |
 | `--seed` | `-s` | Random seed for the run. | `0` |
-| `--verbose`| `-v` | Verbosity level (0, 1, or 2). | `0` |
+| `--verbose`| `-v` | Verbosity level (0 or 1). | `0` |
 
 
 ### Training Agents
@@ -59,12 +62,12 @@ Use the `train` action followed by the algorithm name.
 
 **Train a PPO agent (recommended):**
 ```bash
-python src/main.py train ppo --seed 42
+python src/main.py train ppo --buffer_size 4096 --seed 42
 ```
 
 **Train a DQN agent:**
 ```
-python src/main.py train dqn --seed 123
+python src/main.py train dqn --model nn --seed 123
 ```
 
 **Train an Expected SARSA agent with a polynomial model**
@@ -78,17 +81,30 @@ Use the `visualize` action to see your trained agents in action. The script will
 
 **Visualize the PPO agent:**
 ```bash
-python src/main.py visualize ppo
+python src/main.py visualize --path models/ppo_nn_2048_42.zip
 ```
 
 **Visualize the DQN agent:**
 ```
-python src/main.py visualize dqn
+python src/main.py visualize --path models/dqn_nn_123.zip
 ```
 
 **Visualize the Expected SARSA agent with a polynomial model**
 ```
-python src/main.py visualize sarsa --model poly --degree 2
+python src/main.py visualize --path models/sarsa_poly_2_10.zip
+```
+
+### Plotting the performance
+Use the plotting_results script to save the plots of rewards and mean loss per episode, or also the entropy specifically for ppo
+
+**Plot rewards and losses of all the algorithms compared:**
+```bash
+python .\src\plot_results.py
+```
+
+**Select which algorithm to plot with different function approximation methods:**
+```bash
+python .\src\plot_results.py --alg dqn
 ```
 
 
